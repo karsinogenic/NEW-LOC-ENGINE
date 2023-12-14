@@ -1,0 +1,45 @@
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%-5level | %d{HH:mm:ss.SSS} | %msg%n</pattern>
+        </encoder>
+    </appender>
+    <!-- <appender name="PIPELINE1" class="ch.qos.logback.core.FileAppender">
+        <file>pipeline1.log</file>
+        <encoder>
+            <pattern>TETS</pattern>
+        </encoder>
+    </appender> -->
+    <!-- <appender name="PIPELINE" class="ch.qos.logback.core.FileAppender">
+        <file>/opt/tomcat_logs/loc_api.log</file>
+        <encoder>
+            <pattern>%-5level | %d{HH:mm:ss.SSS} | %msg%n</pattern>
+        </encoder>
+    </appender> -->
+
+     <appender name="RollingFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/opt/tomcat_logs/log_loc_api.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <!-- Log file will roll every day -->
+                <fileNamePattern>/opt/tomcat_logs/log_loc_api.%d{yyyy-MM-dd}.log</fileNamePattern>
+            </rollingPolicy>
+
+            <encoder>
+                <pattern>%-5level | %d{HH:mm:ss.SSS} | %msg%n</pattern>
+            </encoder>
+    </appender>
+    <!-- Add more appenders for other pipelines if needed -->
+
+    <logger name="loc_log" level="INFO">
+        <!-- <appender-ref ref="PIPELINE"/> -->
+        <appender-ref ref="RollingFile"/>
+    </logger>
+    <!-- Add more loggers for other pipelines if needed -->
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <!-- <appender-ref ref="PIPELINE"/> -->
+        <!-- <appender-ref ref="RollingFile"/> -->
+    </root>
+    
+</configuration>

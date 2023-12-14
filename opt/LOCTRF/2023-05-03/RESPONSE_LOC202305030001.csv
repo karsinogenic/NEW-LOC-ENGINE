@@ -1,0 +1,10 @@
+Flag:,N,
+Account Debit:,1021000300006,
+Total transaction:,1,
+Total transaction amount:,1000000,
+Total charge:,0,
+Transaction date:,030523,
+User ID:,,
+,,
+Service code,Source Branch,Date DDMMYY,Reff no,Amount,Remark Line 3,Remark Line 4,REMARK TRX,BIC BANK PENERIMA,NAMA PENGIRIM,REKENING PENGIRIM,CHARGE 1,CHARGE 2,Jenis nasabah penerima,Status penduduk penerima,Account Credit,Account Debit,NAMA PENERIMA OVB,REKENING PENERIMA SKN,NAMA PENERIMA SKN,REKENING PENERIMA  RTG,NAMA PENERIMA  RTG,AlAMAT PENERIMA,AlAMAT KOTA PENERIMA,KODE CABANG BANK PENERIMA,NAMA PENERIMA EWALLET,Reff User,Status,DescStatus,COMPANY IDENTIFIER,Additional1,Additional2,Additional3,CurrencyDebet,CurrencyCredit,RateDebit,RateCredit,AmountCredit
+OVB,001,030523,LOC20230503000100001,1000000,LOAN ON CARD M-SMILE,lpm650683276,,,,,,,,,111111141111,1021000300006,NaufalTest,,,,,,,,,lpm650683276,F,Account Debit/Credit Not Found,null,,,,,,,,,,
