@@ -19,15 +19,17 @@ public class FirebaseService {
     private ChannelResponseRepository crr;
     private LogAscend logAscend;
     private NewAESComponent aesComponent;
+    private AESComponent aesComponent2;
     private String url;
 
     public FirebaseService(ChannelResponseRepository crr, LogAscend logAscend, FirebaseConfigRepository fcr,
-            NewAESComponent aesComponent, String url) {
+            NewAESComponent aesComponent, String url, AESComponent aesComponent2) {
         this.crr = crr;
         this.logAscend = logAscend;
         this.fcr = fcr;
         this.aesComponent = aesComponent;
         this.url = url;
+        this.aesComponent2 = aesComponent2;
     }
 
     public JSONObject createJsonFirebase(ChannelResponseRepository crr, LogAscend logAscend, String status) {
@@ -68,7 +70,7 @@ public class FirebaseService {
         Map hasil = new HashMap<>();
         ChannelResponse channelResponse = crr.getByReferenceId(logAscend.getReferenceId()).get();
         AESEncryptDecrypt aesEncryptDecrypt = new AESEncryptDecrypt();
-        HTTPRequest httpRequest = new HTTPRequest();
+        HTTPRequest httpRequest = new HTTPRequest(aesComponent2);
         LocalDate localDate = LocalDate.now();
 
         JSONObject msg = new JSONObject();

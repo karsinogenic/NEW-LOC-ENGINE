@@ -16,10 +16,6 @@ import org.springframework.boot.web.servlet.support.SpringBootServletInitializer
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.password.NoOpPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.JdbcUserDetailsManager;
 
 import com.demo_loc_engine.demo.Controllers.APIMainController;
 import com.demo_loc_engine.demo.Models.TerminalMerchant;
@@ -36,7 +32,7 @@ public class DemoApplication extends SpringBootServletInitializer {
 	// public TerminalMerchantRepository terminalMerchantRepository;
 
 	public static void main(String[] args) {
-		AmbilAscend ambilAscend = new AmbilAscend();
+		// AmbilAscend ambilAscend = new AmbilAscend();
 		// ambilAscend.queryDatabase();
 		SpringApplication.run(DemoApplication.class, args);
 		// APIMainController apiMainController = new APIMainController();

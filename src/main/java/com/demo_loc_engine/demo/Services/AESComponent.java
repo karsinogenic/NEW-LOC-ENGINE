@@ -30,6 +30,28 @@ public class AESComponent {
     @Value("${elastic.url}")
     private String elasticUrl;
 
+    @Value("${http.timeout}")
+    private Integer httpTimeout;
+
+    @Value("${pefindo.url}")
+    private String pefindoUrl;
+
+    public String getPefindoUrl() {
+        return pefindoUrl;
+    }
+
+    public void setPefindoUrl(String pefindoUrl) {
+        this.pefindoUrl = pefindoUrl;
+    }
+
+    public Integer getHttpTimeout() {
+        return httpTimeout;
+    }
+
+    public void setHttpTimeout(Integer httpTimeout) {
+        this.httpTimeout = httpTimeout;
+    }
+
     public String getAesIV() {
         return aesIV;
     }

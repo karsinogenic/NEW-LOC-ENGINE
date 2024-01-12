@@ -99,6 +99,7 @@ import com.demo_loc_engine.demo.Repositories.UsersRepository;
 import com.demo_loc_engine.demo.Services.AESComponent;
 import com.demo_loc_engine.demo.Services.AESEncryptDecrypt;
 import com.demo_loc_engine.demo.Services.APICustomer;
+import com.demo_loc_engine.demo.Services.CheckPefindo;
 import com.demo_loc_engine.demo.Services.CheckThreads;
 import com.demo_loc_engine.demo.Services.CheckWithoutThreads;
 import com.demo_loc_engine.demo.Services.FileReadWrite;
@@ -106,16 +107,11 @@ import com.demo_loc_engine.demo.Services.FirebaseService;
 import com.demo_loc_engine.demo.Services.HTTPRequest;
 import com.demo_loc_engine.demo.Services.LogService;
 import com.demo_loc_engine.demo.Services.MFTS;
-import com.demo_loc_engine.demo.loc_ascend.Models.TestAscore;
-import com.demo_loc_engine.demo.loc_ascend.Repositories.TestAscoreRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.reflect.TypeToken;
+
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 
@@ -189,17 +185,20 @@ public class APIMainController {
     // validator = factory.getValidator();
     // }
 
-    @GetMapping("/cobaFire")
-    public ResponseEntity cobaAsc() {
-        String urlMFTS = this.apiConfigRepository.findIpByNama("MFTS_securitybp");
-        List<LogAscend> logAscend = this.logAscendRepository.findAll();
-        NewAESComponent aesComponentNew = this.aesComponentRepository.findByNama("MFTS_RES");
+    // @GetMapping("/cobaFire")
+    // public ResponseEntity cobaAsc() {
+    // String urlMFTS = this.apiConfigRepository.findIpByNama("MFTS_securitybp");
+    // List<LogAscend> logAscend = this.logAscendRepository.findAll();
+    // NewAESComponent aesComponentNew =
+    // this.aesComponentRepository.findByNama("MFTS_RES");
 
-        FirebaseService firebaseService = new FirebaseService(channelResponseRepository,
-                logAscend.get(logAscend.size() - 1), firebaseConfigRepository, aesComponentNew, urlMFTS);
-        Boolean coba = firebaseService.sendToFireBase("F");
-        return new ResponseEntity<>(HttpStatus.OK);
-    }
+    // FirebaseService firebaseService = new
+    // FirebaseService(channelResponseRepository,
+    // logAscend.get(logAscend.size() - 1), firebaseConfigRepository,
+    // aesComponentNew, urlMFTS);
+    // Boolean coba = firebaseService.sendToFireBase("F");
+    // return new ResponseEntity<>(HttpStatus.OK);
+    // }
 
     @GetMapping("/getChannelId")
     public ResponseEntity getChannelId(@RequestParam(required = false) Long id) {
@@ -949,22 +948,27 @@ public class APIMainController {
                         "\"terminalID\": \"" + list_terminal.get().getTerminalId() + "\"," +
                         "\"merchantID\": \"" + list_terminal.get().getMerchantId() + "\"" +
                         "}";
-                ipLoc = this.apiConfigRepository.findIpByNama("LOC");
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create("http://" + ipLoc + "/loc/api/toAscendNew"))
-                        // .uri(URI.create("http://127.0.0.1:8081/api/toAscendNew"))
-                        .POST(BodyPublishers.ofString(jsonInput))
-                        .header("Content-type", "application/json")
-                        .header("Authorization", getBasicAuthenticationHeader("7777777", "7777777"))
-                        .build();
+                JSONObject newJsonObject = new JSONObject(jsonInput);
+                // ipLoc = this.apiConfigRepository.findIpByNama("LOC");
+                // HttpRequest request = HttpRequest.newBuilder()
+                // .uri(URI.create("http://" + ipLoc + "/loc/api/toAscendNew"))
+                // // .uri(URI.create("http://127.0.0.1:8081/api/toAscendNew"))
+                // .POST(BodyPublishers.ofString(jsonInput))
+                // .header("Content-type", "application/json")
+                // .header("Authorization", getBasicAuthenticationHeader("7777777", "7777777"))
+                // .build();
                 // //System.out.println(jsonInput);
-                HttpClient client = HttpClient.newBuilder().build();
-                HttpResponse<?> httpResponse = client.send(request, HttpResponse.BodyHandlers.ofString());
+                // HttpClient client = HttpClient.newBuilder().build();
+                // HttpResponse<?> httpResponse = client.send(request,
+                // HttpResponse.BodyHandlers.ofString());
                 // //System.out.println(httpResponse.body().toString());
-                Map<String, Object> hasil_map = mapper.readValue(httpResponse.body().toString(),
-                        new TypeReference<Map<String, Object>>() {
-                        });
-                if (httpResponse.body().toString().contains("200")) {
+                // Map<String, Object> hasil_map =
+                // mapper.readValue(httpResponse.body().toString(),
+                // new TypeReference<Map<String, Object>>() {
+                // });
+                Map<String, Object> hasil_map = this.toAscendNew(null, newJsonObject.toMap()).getBody();
+                System.out.println("hasil ascend new: " + new JSONObject(hasil_map).toString());
+                if (hasil_map.get("status").toString().equals("200")) {
                     response.put("rc", 200);
                     response.put("authno", hasil_map.get("authno"));
                     response.put("detail", "Berhasil kirim ke Ascend");
@@ -975,7 +979,8 @@ public class APIMainController {
             } catch (Exception e) {
                 response.put("rc", 400);
                 response.put("detail", "Gagal ke Ascend");
-                response.put("info", e.getLocalizedMessage());
+                // response.put("info", e.ge());
+                e.printStackTrace();
                 return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
             }
 
@@ -1036,6 +1041,19 @@ public class APIMainController {
                 }
 
             }
+
+            if (entry.getKey().equals("bankName")) {
+                try {
+                    if (!inputs.get("bankName").toString().toLowerCase().equals("bank mega")) {
+                        response.put("rc", 400);
+                        response.put("detail", "accName harus ada isi");
+                        return response;
+                    }
+                } catch (Exception e) {
+                    // TODO: handle exception
+                }
+            }
+
         }
 
         try {
@@ -1225,12 +1243,16 @@ public class APIMainController {
 
     @PostMapping(value = "/toAscendNew")
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> toAscendNew(@RequestBody Map<String, Object> input) {
+    public ResponseEntity<Map<String, Object>> toAscendNew(@RequestBody(required = false) Map<String, Object> input,
+            Map<String, Object> input1) {
         Map<String, Object> newMap = new HashMap<String, Object>();
         NewAESComponent aesComponentNew = this.aesComponentRepository.findByNama("SALE");
+        if (input == null) {
+            input = input1;
+        }
 
         String refId;
-        // //System.out.println("masuk ascend");
+        // System.out.println("masuk ascend");
 
         try {
             refId = input.get("referenceId").toString();
@@ -1293,11 +1315,12 @@ public class APIMainController {
 
         String ipAscendSale = this.apiConfigRepository.findIpByNama("ASC_sale_new");
         // //System.out.println("siap kirim");
-        HTTPRequest httpRequest = new HTTPRequest();
+        HTTPRequest httpRequest = new HTTPRequest(aesComponent);
         String response = "";
         try {
+            System.out.println("request sale :" + newJsonInput.toString());
             response = httpRequest.postRequest("http://" + ipAscendSale, newJsonInput.toString());
-            // //System.out.println(response);
+            System.out.println("response sale :" + response);
         } catch (Exception e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -1334,6 +1357,8 @@ public class APIMainController {
                 logAscend.setCreated_at(ldt4);
                 logAscend.setIsGenerated(null);
                 logAscend.setIsGeneratedPPMERL(null);
+                mapAscend.put("status", mapAscend.get("rc").toString());
+                // System.out.println(new JSONObject(mapAscend).toString());
                 this.logAscendRepository.save(logAscend);
                 return new ResponseEntity<>(mapAscend, HttpStatus.BAD_REQUEST);
             }
@@ -1536,7 +1561,7 @@ public class APIMainController {
         // System.out.println(uri);
         // System.out.println(data);
         try {
-            HTTPRequest httpRequest = new HTTPRequest();
+            HTTPRequest httpRequest = new HTTPRequest(aesComponent);
             String responseHasil = httpRequest.postRequestBasicAuth(uri, data, "7777777", "7777777");
             // System.out.println("response hasil: " + responseHasil);
 
@@ -1710,7 +1735,7 @@ public class APIMainController {
                 // //System.out.println(jsonInput.toString());
                 // response.put("jsonInput", jsonInput.toString());
 
-                HTTPRequest httpRequest = new HTTPRequest();
+                HTTPRequest httpRequest = new HTTPRequest(aesComponent);
                 String httpRequestResponse;
                 String httpRequestResponseOld;
                 try {
@@ -1825,7 +1850,7 @@ public class APIMainController {
         bodyResponse.put("key_id", aesComponentNew.getAesKeyId());
         bodyResponse.put("data", addMSG);
 
-        HTTPRequest httpRequest = new HTTPRequest();
+        HTTPRequest httpRequest = new HTTPRequest(aesComponent);
         String bodyResponseSent = "";
         try {
             bodyResponseSent = httpRequest.postRequest("http://" + url,
@@ -1888,7 +1913,7 @@ public class APIMainController {
         Map<String, Object> response = new HashMap<>();
         List<MftsResponse> mfts = this.mftsResponseRepository.findMFTSFile();
         List<Map<String, Object>> response_list = new ArrayList<>();
-        HTTPRequest httpRequest = new HTTPRequest();
+        HTTPRequest httpRequest = new HTTPRequest(aesComponent);
         for (MftsResponse mftsResponse : mfts) {
             // //System.out.println(mftsResponse.getNama_file());
             ResponseEntity<Map<String, Object>> mapMFTS = findMFTS(null, mftsResponse.getNama_file());
@@ -1924,12 +1949,12 @@ public class APIMainController {
         }
         response.put("data", response_list);
         return new ResponseEntity<>(response, HttpStatus.OK);
-        // HTTPRequest httpRequest = new HTTPRequest();
+        // HTTPRequest httpRequest = new HTTPRequest(aesComponent);
     }
 
     @GetMapping("/cobaElastic")
     public String cobaElastic() throws Exception {
-        HTTPRequest httpRequest = new HTTPRequest();
+        HTTPRequest httpRequest = new HTTPRequest(aesComponent);
         String url = "http://10.14.21.31:9200/asc-custp*/_search";
         String body = """
                 {"query":{"query_string":{"query":"(10501601700009)","fields":["cust-nbr"]}}}
@@ -1977,10 +2002,40 @@ public class APIMainController {
 
     @PostMapping("/cekCustomer")
     public ResponseEntity<Map<String, Object>> cekCustomer(@RequestBody Map<String, Object> input) {
+
         // APICustomer apiCustomer = new APICustomer();
         logService.info("/cekCustomer req: " + input.toString());
         Boolean eligible = true;
         Map<String, Object> response = new HashMap<String, Object>();
+
+        // pefind
+        CheckPefindo checkPefindo = new CheckPefindo();
+        String cekParamPefindo = checkPefindo.cekParamPefindo(input);
+        if (cekParamPefindo.length() > 0) {
+            response.put("rc", "209");
+            response.put("rd", "Param " + cekParamPefindo + " not found");
+            response.put("cause", "Pefindo");
+            logService.info("/cekCustomer res: " + response.toString());
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
+        JSONObject pefindoBody = checkPefindo.validateAndCreate(input);
+        try {
+            Boolean hasilPefindo = checkPefindo.pefindo(pefindoBody, aesComponent);
+            if (!hasilPefindo) {
+                response.put("rc", "209");
+                response.put("rd", "Not Eligible");
+                response.put("cause", "Pefindo");
+                logService.info("/cekCustomer res: " + response.toString());
+                return new ResponseEntity<>(response, HttpStatus.OK);
+            }
+        } catch (Exception e) {
+            response.put("rc", "400");
+            response.put("rd", "Other Reason");
+            response.put("cause", e.getMessage());
+            logService.info("/cekCustomer res: " + response.toString());
+            return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+        }
+
         if (input.get("kodeChannel") == null) {
             response.put("rc", 400);
             response.put("rd", "tidak ada kodeChannel");
@@ -2238,7 +2293,7 @@ public class APIMainController {
             Optional<LogAscend> transactionDatas = this.logAscendRepository
                     .findByRefId(dataMaps.getJSONObject(i).getString("refUser"));
             FirebaseService firebaseService = new FirebaseService(channelResponseRepository, transactionDatas.get(),
-                    firebaseConfigRepository, aesComponentNew, urlMFTS);
+                    firebaseConfigRepository, aesComponentNew, urlMFTS, aesComponent);
             // //System.out.println(dataMaps.getJSONObject(i).toString());
             if (transactionDatas.isEmpty() == false) {
                 String status_transfer = "";

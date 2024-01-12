@@ -18,7 +18,7 @@ public class APICustomer {
     public AESComponent aesComponent;
 
     public Map<String, Object> dataApi(String custNum, String fieldOutput) {
-        HTTPRequest httpRequest = new HTTPRequest();
+        HTTPRequest httpRequest = new HTTPRequest(aesComponent);
         ObjectMapper objectMapper = new ObjectMapper();
 
         JSONObject query_string = new JSONObject();

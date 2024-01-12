@@ -17,6 +17,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.*;
 
 public class HTTPRequest {
+
+    private AESComponent aesComponent;
+
+    public HTTPRequest(AESComponent aesComponent) {
+        this.aesComponent = aesComponent;
+    }
+
     public String postRequest(String uri, String body) throws Exception {
         URL url = new URL(uri);
 
@@ -29,6 +36,8 @@ public class HTTPRequest {
         // Set headers
         conn.setRequestProperty("Content-Type", "application/json");
         conn.setRequestProperty("Accept", "application/json");
+        conn.setConnectTimeout(aesComponent.getHttpTimeout());
+        conn.setReadTimeout(aesComponent.getHttpTimeout());
 
         // Set request body
         String requestBody = body;

@@ -70,6 +70,9 @@ public class ChannelResponse {
     @Column(name = "detail_status_transfer", columnDefinition = "text")
     private String detailStatusTransfer;
 
+    @Column(name = "bank_name")
+    private String bankName;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -216,6 +219,14 @@ public class ChannelResponse {
 
     public void setAdditionalData(String additionalData) {
         this.additionalData = additionalData;
+    }
+
+    public String getBankName() {
+        return bankName;
+    }
+
+    public void setBankName(String bankName) {
+        this.bankName = bankName;
     }
 
 }
