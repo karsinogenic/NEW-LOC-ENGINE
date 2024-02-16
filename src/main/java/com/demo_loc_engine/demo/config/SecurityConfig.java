@@ -44,7 +44,7 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests((authorize) -> authorize
                         .requestMatchers("/login").permitAll()
-                        // .requestMatchers("/api/**").permitAll()
+                        .requestMatchers("/api/getRemoteAddress").permitAll()
                         .anyRequest().authenticated())
                 .csrf((csrf) -> csrf.disable())
                 .httpBasic(Customizer.withDefaults())
@@ -76,7 +76,7 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhosot:8089"));
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:8089"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST"));
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

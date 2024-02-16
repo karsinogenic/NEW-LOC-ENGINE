@@ -66,7 +66,7 @@ public class UserDetailsLogin implements UserDetails, UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        System.out.println(username);
+        // System.out.println(username);
         // TODO Auto-generated method stub
         String userName, password = null;
         List<GrantedAuthority> authorities = null;

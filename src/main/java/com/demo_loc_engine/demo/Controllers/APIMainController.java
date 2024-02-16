@@ -118,6 +118,7 @@ import com.opencsv.CSVReaderBuilder;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
@@ -1997,6 +1998,18 @@ public class APIMainController {
         return apiCustomer.dataApi(custNum, fieldOutput);
     }
 
+    @GetMapping("/getRemoteAddress")
+    public String getRemoteAddress(HttpServletRequest request) {
+        // Get remote address from HttpServletRequest
+        String remoteAddress = request.getRemoteAddr();
+
+        // Print remote address to console
+        System.out.println("Remote Address: " + remoteAddress);
+
+        // Return the remote address as a response
+        return "Remote Address: " + remoteAddress;
+    }
+
     @Autowired
     private APICustomer apiCustomer;
 
@@ -2009,32 +2022,32 @@ public class APIMainController {
         Map<String, Object> response = new HashMap<String, Object>();
 
         // pefind
-        CheckPefindo checkPefindo = new CheckPefindo();
-        String cekParamPefindo = checkPefindo.cekParamPefindo(input);
-        if (cekParamPefindo.length() > 0) {
-            response.put("rc", "209");
-            response.put("rd", "Param " + cekParamPefindo + " not found");
-            response.put("cause", "Pefindo");
-            logService.info("/cekCustomer res: " + response.toString());
-            return new ResponseEntity<>(response, HttpStatus.OK);
-        }
-        JSONObject pefindoBody = checkPefindo.validateAndCreate(input);
-        try {
-            Boolean hasilPefindo = checkPefindo.pefindo(pefindoBody, aesComponent);
-            if (!hasilPefindo) {
-                response.put("rc", "209");
-                response.put("rd", "Not Eligible");
-                response.put("cause", "Pefindo");
-                logService.info("/cekCustomer res: " + response.toString());
-                return new ResponseEntity<>(response, HttpStatus.OK);
-            }
-        } catch (Exception e) {
-            response.put("rc", "400");
-            response.put("rd", "Other Reason");
-            response.put("cause", e.getMessage());
-            logService.info("/cekCustomer res: " + response.toString());
-            return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
-        }
+        // CheckPefindo checkPefindo = new CheckPefindo();
+        // String cekParamPefindo = checkPefindo.cekParamPefindo(input);
+        // if (cekParamPefindo.length() > 0) {
+        // response.put("rc", "209");
+        // response.put("rd", "Param " + cekParamPefindo + " not found");
+        // response.put("cause", "Pefindo");
+        // logService.info("/cekCustomer res: " + response.toString());
+        // return new ResponseEntity<>(response, HttpStatus.OK);
+        // }
+        // JSONObject pefindoBody = checkPefindo.validateAndCreate(input);
+        // try {
+        // Boolean hasilPefindo = checkPefindo.pefindo(pefindoBody, aesComponent);
+        // if (!hasilPefindo) {
+        // response.put("rc", "209");
+        // response.put("rd", "Not Eligible");
+        // response.put("cause", "Pefindo");
+        // logService.info("/cekCustomer res: " + response.toString());
+        // return new ResponseEntity<>(response, HttpStatus.OK);
+        // }
+        // } catch (Exception e) {
+        // response.put("rc", "400");
+        // response.put("rd", "Other Reason");
+        // response.put("cause", e.getMessage());
+        // logService.info("/cekCustomer res: " + response.toString());
+        // return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+        // }
 
         if (input.get("kodeChannel") == null) {
             response.put("rc", 400);

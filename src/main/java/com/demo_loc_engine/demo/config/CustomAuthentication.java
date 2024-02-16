@@ -4,6 +4,7 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.web.authentication.WebAuthenticationDetails;
 
 public class CustomAuthentication implements AuthenticationProvider {
 
@@ -15,7 +16,10 @@ public class CustomAuthentication implements AuthenticationProvider {
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
-        System.out.println(authentication.getName());
+        // System.out.println(authentication.getName());
+        WebAuthenticationDetails details = (WebAuthenticationDetails) authentication.getDetails();
+        String userIp = details.getRemoteAddress();
+        System.out.println("userIp :" + userIp);
         return new UsernamePasswordAuthenticationToken(userDetailsLogin.getUsername(),
                 userDetailsLogin.getPassword(), userDetailsLogin.getAuthorities());
     }
@@ -23,7 +27,7 @@ public class CustomAuthentication implements AuthenticationProvider {
     @Override
     public boolean supports(Class<?> authentication) {
         // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'supports'");
+        return (UsernamePasswordAuthenticationToken.class.isAssignableFrom(authentication));
     }
 
     // public Authentication myAuthentication(Authentication authentication){
