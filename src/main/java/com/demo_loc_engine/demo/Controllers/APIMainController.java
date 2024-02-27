@@ -550,7 +550,7 @@ public class APIMainController {
         JSONObject jsonObject1 = new JSONObject(input);
         logService.info("/eligible req: " + jsonObject1.toString());
 
-        // //System.out.println(jsonObject1.get("data"));
+        // System.out.println("pefindo: " + jsonObject1.get("pefindo_data"));
         JSONArray jsonArray = new JSONArray(jsonObject1.get("data").toString());
 
         List<Thread> lThreads = new ArrayList<>();
@@ -594,11 +594,12 @@ public class APIMainController {
         }
         response.put("data", finalList);
 
-        Map pefindo = pefindoSlikList(finalList).getBody();
-        if (pefindo.get("rc").toString().contains("EX")) {
-            response.put("rc", pefindo.get("rc"));
-            response.put("rd", pefindo.get("rd"));
-        }
+        Map pefindo = pefindoSlikList(finalList, input).getBody();
+        // if (pefindo.get("rc").toString().contains("EX")) {
+        response.put("rc", pefindo.get("rc"));
+        response.put("rd", pefindo.get("rd"));
+        // }
+
         // // response.put("data", mapList);
         // int i = 1;
         // for (Map<String, Object> object : mapList) {
@@ -624,17 +625,42 @@ public class APIMainController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    public ResponseEntity<Map> pefindoSlikList(List<Map> finalList) {
+    public ResponseEntity<Map> pefindoSlikList(List<Map> finalList, Map<String, Object> input) {
         Map hasil = new HashMap<>();
-        Boolean hasil_bool = true;
+        Boolean hasil_bool = false;
         for (Map map : finalList) {
             hasil_bool = hasil_bool || (boolean) map.get("bool");
+            System.out.println("hasil bool: " + hasil_bool);
         }
         if (!hasil_bool) {
             hasil.put("rc", "EX-00");
             hasil.put("rd", "All Card Not Eligible");
             return new ResponseEntity<>(hasil, null, 200);
         }
+
+        if (!input.containsKey("pefindo_data") && hasil_bool) {
+            hasil.put("rc", "01");
+            hasil.put("rd", "Eligible Without PefindoData");
+            return new ResponseEntity<>(hasil, null, 200);
+        }
+        // System.out.println("return");
+
+        try {
+            JSONObject pefindoData = new JSONObject(input);
+            // System.out.println("pefindo data: " + pefindoData);
+            CheckPefindo checkPefindo = new CheckPefindo();
+            String cekParam = checkPefindo.cekParamPefindo(pefindoData.getJSONObject("pefindo_data").toMap());
+            if (cekParam.length() > 0) {
+                hasil.put("rc", "EX-03");
+                hasil.put("rd", "PefindoData Wrong Format " + cekParam);
+                return new ResponseEntity<>(hasil, null, 200);
+            }
+        } catch (Exception e) {
+            hasil.put("rc", "EX-03");
+            hasil.put("rd", "PefindoData Wrong Format");
+            return new ResponseEntity<>(hasil, null, 200);
+        }
+
         // hit pefindo here
         HTTPRequest httpRequest = new HTTPRequest(aesComponent);
         JSONObject hasilJsonObject;

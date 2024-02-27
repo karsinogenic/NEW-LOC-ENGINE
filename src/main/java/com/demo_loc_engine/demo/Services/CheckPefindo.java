@@ -28,9 +28,11 @@ public class CheckPefindo {
         return jsonToSend;
     }
 
-    public String cekParamPefindo(Map<String, Object> isi) {
-        String[] bodyPefindo = { "dob", "fullname", "custNumber", "id", "path" };
+    public String cekParamPefindo(Map isi) {
+        String[] bodyPefindo = { "dob", "fullname", "nik", "id", "path" };
         String hasil = "";
+        JSONObject coba = new JSONObject(isi);
+        System.out.println("isi: " + coba);
         for (String string : bodyPefindo) {
             try {
                 isi.get(string).toString();
