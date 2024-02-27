@@ -235,8 +235,11 @@ public class CheckThreads implements Runnable {
         }
         if (kode_hasil.size() > 0) {
             response.put("status " + input.get("cardnbr"), "eligible");
+            response.put("bool", true);
         } else {
             response.put("status " + input.get("cardnbr"), "not eligible");
+            response.put("bool", false);
+
         }
         response = new TreeMap<>(response);
         result = response;

@@ -36,6 +36,9 @@ public class AESComponent {
     @Value("${pefindo.url}")
     private String pefindoUrl;
 
+    @Value("${pefindo.path}")
+    private String pefindoPath;
+
     public String getPefindoUrl() {
         return pefindoUrl;
     }
@@ -114,6 +117,14 @@ public class AESComponent {
 
     public void setAesKey(String aesKey) {
         this.aesKey = aesKey;
+    }
+
+    public String getPefindoPath() {
+        return pefindoPath;
+    }
+
+    public void setPefindoPath(String pefindoPath) {
+        this.pefindoPath = pefindoPath;
     }
 
 }

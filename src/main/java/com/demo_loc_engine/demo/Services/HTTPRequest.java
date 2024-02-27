@@ -3,6 +3,7 @@ package com.demo_loc_engine.demo.Services;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -112,6 +113,7 @@ public class HTTPRequest {
 
     public String getRequest(String uri, String body, String username, String password) throws Exception {
         URL url = new URL(uri);
+        System.out.println("uri: " + uri);
 
         // Create HttpURLConnection object
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -120,8 +122,6 @@ public class HTTPRequest {
         conn.setRequestMethod("GET");
 
         // Set headers
-        conn.setRequestProperty("Content-Type", "application/json");
-        conn.setRequestProperty("Accept", "application/json");
 
         if (username != null && password != null) {
             String authString = username + ":" + password;
@@ -130,13 +130,68 @@ public class HTTPRequest {
         }
 
         // Set request body
-        String requestBody = body;
-        byte[] requestBodyBytes = requestBody.getBytes("UTF-8");
-        conn.setDoOutput(true);
-        OutputStream outputStream = conn.getOutputStream();
-        outputStream.write(requestBodyBytes);
-        outputStream.flush();
-        outputStream.close();
+        if (body != null) {
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("Accept", "application/json");
+            String requestBody = body;
+            byte[] requestBodyBytes = requestBody.getBytes("UTF-8");
+            conn.setDoOutput(true);
+            OutputStream outputStream = conn.getOutputStream();
+            outputStream.write(requestBodyBytes);
+            outputStream.flush();
+            outputStream.close();
+        }
+
+        // Get response code
+        int responseCode = conn.getResponseCode();
+
+        // Get response body
+        BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+        String inputLine;
+        StringBuilder responseBody = new StringBuilder();
+        while ((inputLine = in.readLine()) != null) {
+            responseBody.append(inputLine);
+        }
+        in.close();
+
+        // Print response
+        // System.out.println("Response Code: " + responseCode);
+        return responseBody.toString();
+    }
+
+    public String getRequestParamNew(String uri, String body, String username, String password) throws Exception {
+        String encodedParam1 = URLEncoder.encode(aesComponent.getPefindoPath(), "UTF-8");
+        String urlString = String.format("%s?path=%s", uri, encodedParam1);
+
+        URL url = new URL(urlString);
+        System.out.println("uri: " + uri);
+
+        // Create HttpURLConnection object
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+
+        // Set request method to POST
+        conn.setRequestMethod("GET");
+
+        // Set headers
+
+        if (username != null && password != null) {
+            String authString = username + ":" + password;
+            String encodedAuthString = Base64.getEncoder().encodeToString(authString.getBytes());
+            conn.setRequestProperty("Authorization", "Basic " + encodedAuthString);
+        }
+
+        // Set request body
+        if (body != null) {
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("Accept", "application/json");
+            String requestBody = body;
+            byte[] requestBodyBytes = requestBody.getBytes("UTF-8");
+            conn.setDoOutput(true);
+            OutputStream outputStream = conn.getOutputStream();
+            outputStream.write(requestBodyBytes);
+            outputStream.flush();
+            outputStream.close();
+        }
 
         // Get response code
         int responseCode = conn.getResponseCode();

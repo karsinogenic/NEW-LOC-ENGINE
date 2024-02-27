@@ -589,8 +589,16 @@ public class APIMainController {
         for (CheckThreads checkThreads : lCheckThreads) {
             finalList.add(checkThreads.result());
         }
+        if (finalList.size() > 0) {
+
+        }
         response.put("data", finalList);
 
+        Map pefindo = pefindoSlikList(finalList).getBody();
+        if (pefindo.get("rc").toString().contains("EX")) {
+            response.put("rc", pefindo.get("rc"));
+            response.put("rd", pefindo.get("rd"));
+        }
         // // response.put("data", mapList);
         // int i = 1;
         // for (Map<String, Object> object : mapList) {
@@ -611,8 +619,48 @@ public class APIMainController {
         // }
 
         // response.put("data", checkThreads.result());
+
         logService.info("/eligible req: " + response.toString());
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    public ResponseEntity<Map> pefindoSlikList(List<Map> finalList) {
+        Map hasil = new HashMap<>();
+        Boolean hasil_bool = true;
+        for (Map map : finalList) {
+            hasil_bool = hasil_bool || (boolean) map.get("bool");
+        }
+        if (!hasil_bool) {
+            hasil.put("rc", "EX-00");
+            hasil.put("rd", "All Card Not Eligible");
+            return new ResponseEntity<>(hasil, null, 200);
+        }
+        // hit pefindo here
+        HTTPRequest httpRequest = new HTTPRequest(aesComponent);
+        JSONObject hasilJsonObject;
+        // String path = "?path=C:/Users/muhmm/Desktop/Bank Mega/Bank
+        // Mega/pefindo/pefindo/src/main/resources/static/pefindo.json";
+        // path.replace(" ", "%20");
+        // path = aesComponent.getPefindoUrl() + path;
+        // System.out.println("path: " + path);
+        try {
+            String hasilHttp = httpRequest.getRequestParamNew(aesComponent.getPefindoUrl(),
+                    null, null, null);
+            hasilJsonObject = new JSONObject(hasilHttp);
+            if (hasilJsonObject.getString("status").contains("Not")) {
+                hasil.put("rc", "EX-01");
+                hasil.put("rd", "Pefindo Not Eligible");
+            } else {
+                hasil.put("rc", "00");
+                hasil.put("rd", "Eligible");
+            }
+        } catch (Exception e) {
+            hasil.put("rc", "EX-99");
+            hasil.put("rd", "Pefindo Timeout / Not Available");
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        return new ResponseEntity<>(hasil, null, 200);
     }
 
     @PostMapping("/cek")
@@ -1996,6 +2044,14 @@ public class APIMainController {
     public Map<String, Object> cobaCek(@RequestParam String custNum, @RequestParam String fieldOutput) {
         APICustomer apiCustomer = new APICustomer();
         return apiCustomer.dataApi(custNum, fieldOutput);
+    }
+
+    // private final JwtToken
+
+    @GetMapping("generateToken")
+    public String getMethodName() {
+
+        return new String();
     }
 
     @GetMapping("/getRemoteAddress")
