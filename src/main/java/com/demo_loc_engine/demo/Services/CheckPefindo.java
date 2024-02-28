@@ -32,7 +32,7 @@ public class CheckPefindo {
         String[] bodyPefindo = { "dob", "fullname", "nik", "id", "path" };
         String hasil = "";
         JSONObject coba = new JSONObject(isi);
-        System.out.println("isi: " + coba);
+        // System.out.println("isi: " + coba);
         for (String string : bodyPefindo) {
             try {
                 isi.get(string).toString();
