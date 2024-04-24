@@ -39,6 +39,17 @@ public class AESComponent {
     @Value("${pefindo.path}")
     private String pefindoPath;
 
+    @Value("${bifast.bic}")
+    private String bifastBic;
+
+    public String getBifastBic() {
+        return bifastBic;
+    }
+
+    public void setBifastBic(String bifastBic) {
+        this.bifastBic = bifastBic;
+    }
+
     public String getPefindoUrl() {
         return pefindoUrl;
     }

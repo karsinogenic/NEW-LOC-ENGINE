@@ -71,6 +71,7 @@ import com.demo_loc_engine.demo.Models.ChannelResponse;
 import com.demo_loc_engine.demo.Models.CustomerParam;
 import com.demo_loc_engine.demo.Models.Kriteria;
 import com.demo_loc_engine.demo.Models.LogAscend;
+import com.demo_loc_engine.demo.Models.LogAscendResponse;
 import com.demo_loc_engine.demo.Models.LogToAscend;
 import com.demo_loc_engine.demo.Models.MftsResponse;
 import com.demo_loc_engine.demo.Models.NewAESComponent;
@@ -1081,8 +1082,8 @@ public class APIMainController {
     public Map<String, Object> cekInputChannelResponse(Map<String, Object> inputs) {
         Map<String, Object> response = new HashMap();
         String[] param = { "referenceId", "cardNo", "amount", "planCode", "expDate", "tierCode", "accName",
-                "accNumber", "terminalMerchant", "gcn", "mobileNumber" };
-        String[] param_opsional = { "additionalData" };
+                "accNumber", "terminalMerchant", "gcn", "mobileNumber", "bic" };
+        // String[] param_opsional = { "additionalData" };
         List<String> compareParam = new ArrayList<String>();
         List<String> newParam = new ArrayList<String>(Arrays.asList(param));
 
@@ -1093,16 +1094,17 @@ public class APIMainController {
         String tierKode = "";
 
         for (Map.Entry<String, Object> entry : inputs.entrySet()) {
-            if (Arrays.asList(param).contains(entry.getKey())
-                    || Arrays.asList(param_opsional).contains(entry.getKey())) {
-                compareParam.add(entry.getKey());
-                response.put("rc", 200);
-            } else {
-                response.put("rc", 400);
-                response.put("detail", "Nama param " + entry.getKey() + " tidak dikenal");
-                response.put("info", "Gunakan nama param sebagai berikut " + Arrays.toString(param));
-                return response;
-            }
+            // if (Arrays.asList(param).contains(entry.getKey())
+            // || Arrays.asList(param_opsional).contains(entry.getKey())) {
+            // compareParam.add(entry.getKey());
+            // response.put("rc", 200);
+            // } else {
+            // response.put("rc", 400);
+            // response.put("detail", "Nama param " + entry.getKey() + " tidak dikenal");
+            // response.put("info", "Gunakan nama param sebagai berikut " +
+            // Arrays.toString(param));
+            // return response;
+            // }
 
             if (entry.getKey().equals("tierCode")) {
                 // //System.out.println(entry.getValue());
@@ -1146,12 +1148,13 @@ public class APIMainController {
             return response;
         }
 
-        List<String> hasilParam = findDifference(newParam, compareParam);
-        // //System.out.println(hasilParam);
-        if (hasilParam.size() > 0 && hasilParam.contains(param_opsional) == false) {
-            response.put("rc", 400);
-            response.put("detail", "Nama param '" + hasilParam.get(0) + "' tidak dimasukan");
-        }
+        // List<String> hasilParam = findDifference(newParam, compareParam);
+        // // //System.out.println(hasilParam);
+        // if (hasilParam.size() > 0 && hasilParam.contains(param_opsional) == false) {
+        // response.put("rc", 400);
+        // response.put("detail", "Nama param '" + hasilParam.get(0) + "' tidak
+        // dimasukan");
+        // }
 
         // }
         Date date = new Date();
@@ -1477,7 +1480,7 @@ public class APIMainController {
         FileReadWrite frw = new FileReadWrite();
         // //System.out.println("coba1: " + frw.tes().get().getReferenceId());
         List<LogAscend> list_logAscend = this.logAscendRepository
-                .findByIsNotGenerated();
+                .findByIsNotGenerated(aesComponent.getBifastBic());
 
         Optional<TerminalMerchant> list_terminal = this.terminalMerchantRepository
                 .findByNama("LOC");
@@ -1521,7 +1524,7 @@ public class APIMainController {
         FileReadWrite frw = new FileReadWrite();
         // //System.out.println("coba1: " + frw.tes().get().getReferenceId());
         List<LogAscend> list_logAscend = this.logAscendRepository
-                .findByIsNotGeneratedPPMERL();
+                .findByIsNotGeneratedPPMERL(aesComponent.getBifastBic());
 
         Optional<TerminalMerchant> list_terminal = this.terminalMerchantRepository
                 .findByNama("LOC");
@@ -1563,7 +1566,7 @@ public class APIMainController {
                 : String.valueOf(ldt.getMonthValue())) + "-" + ldt.getDayOfMonth());
         Map<String, Object> response = new HashMap<String, Object>();
 
-        List<LogAscend> list_logAscend = this.logAscendRepository.findLOCTRFData();
+        List<LogAscend> list_logAscend = this.logAscendRepository.findLOCTRFData(aesComponent.getBifastBic());
 
         Optional<TerminalMerchant> list_terminal = this.terminalMerchantRepository.findByNama("LOC");
 
@@ -2392,13 +2395,16 @@ public class APIMainController {
             // //System.out.println(dataMaps.getJSONObject(i).toString());
             if (transactionDatas.isEmpty() == false) {
                 String status_transfer = "";
+                String status_transfer_desc = "";
                 try {
                     status_transfer = dataMaps.getJSONObject(i).getString("status");
+                    status_transfer_desc = dataMaps.getJSONObject(i).getString("desc");
                 } catch (Exception e) {
                     status_transfer = "null";
                 }
                 LogAscend tempTransactionData = transactionDatas.get();
                 tempTransactionData.setStatusTransfer(status_transfer);
+                tempTransactionData.setStatusTransferDesc(status_transfer_desc);
                 Boolean status_firebase = false;
                 if (status_transfer.equals("S")) {
                     status_firebase = firebaseService.sendToFireBase("S");
@@ -2417,4 +2423,34 @@ public class APIMainController {
         }
         return response;
     }
+
+    @GetMapping("/findTxnResponse")
+    public ResponseEntity<Map> findTxnResponse(@RequestParam(name = "tanggal", required = false) String tanggal,
+            @RequestParam(name = "refId", required = false) String refId) {
+        Map hasil = new HashMap<>();
+        List<LogAscendResponse> logAscends = new ArrayList<>();
+        if (tanggal == null && refId == null) {
+            hasil.put("rc", "99");
+            hasil.put("rd", "param missing");
+            return new ResponseEntity<>(hasil, null, 200);
+        } else if (tanggal != null && refId == null) {
+            String newTgl = tanggal + "T00:00:00";
+            List<LogAscend> list = this.logAscendRepository.findByCreated_at(LocalDateTime.parse(newTgl),
+                    LocalDateTime.parse(newTgl).plusDays(1));
+            for (LogAscend logAscend : list) {
+                LogAscendResponse lResponse = new LogAscendResponse(logAscend);
+                logAscends.add(lResponse);
+            }
+        } else if (tanggal == null && refId != null) {
+            LogAscend log = this.logAscendRepository.findByRefId(refId).get();
+            LogAscendResponse lResponse = new LogAscendResponse(log);
+            logAscends.add(lResponse);
+        }
+        hasil.put("rc", "00");
+        hasil.put("rd", "OK");
+        hasil.put("data", logAscends);
+        // this.logAscendRepository.findByRefId(refId);
+        return new ResponseEntity<>(hasil, null, 200);
+    }
+
 }

@@ -29,6 +29,9 @@ public class LogAscend {
 
     private String statusTransfer;
 
+    @Column(name = "status_transfer_desc")
+    private String statusTransferDesc;
+
     @Column(nullable = true)
     private String auth_no;
 
@@ -56,8 +59,19 @@ public class LogAscend {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime created_at;
 
+    @Column(name = "bic", nullable = false, updatable = false)
+    private String bic;
+
     @Column(name = "nama_file")
     private String namaFile;
+
+    public String getBic() {
+        return bic;
+    }
+
+    public void setBic(String bic) {
+        this.bic = bic;
+    }
 
     public Boolean getIsGeneratedPPMERL() {
         return isGeneratedPPMERL;
@@ -113,6 +127,14 @@ public class LogAscend {
 
     public void setRd(String rd) {
         this.rd = rd;
+    }
+
+    public String getStatusTransferDesc() {
+        return statusTransferDesc;
+    }
+
+    public void setStatusTransferDesc(String statusTransferDesc) {
+        this.statusTransferDesc = statusTransferDesc;
     }
 
     public String getReffno() {
