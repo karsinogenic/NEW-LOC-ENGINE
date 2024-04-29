@@ -29,8 +29,19 @@ public class LogToAscend {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "redial_at")
+    private LocalDateTime redialAt;
+
     public Long getId() {
         return Id;
+    }
+
+    public LocalDateTime getRedialAt() {
+        return redialAt;
+    }
+
+    public void setRedialAt(LocalDateTime redialAt) {
+        this.redialAt = redialAt;
     }
 
     public void setId(Long id) {

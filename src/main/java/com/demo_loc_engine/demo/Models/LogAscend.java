@@ -59,7 +59,7 @@ public class LogAscend {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime created_at;
 
-    @Column(name = "bic", nullable = false, updatable = false)
+    @Column(name = "bic", nullable = false)
     private String bic;
 
     @Column(name = "nama_file")

@@ -15,4 +15,7 @@ public interface LogToAscendRepository extends JpaRepository<LogToAscend, Long> 
 
     @Query("Select l From LogToAscend l where l.referenceId = :refId order by l.id DESC")
     public List<LogToAscend> findByRefId(@Param("refId") String refId);
+
+    @Query("Select l From LogToAscend l where l.referenceId = :refId and  order by l.id DESC")
+    public List<LogToAscend> findByRefIdNew(@Param("refId") String refId);
 }

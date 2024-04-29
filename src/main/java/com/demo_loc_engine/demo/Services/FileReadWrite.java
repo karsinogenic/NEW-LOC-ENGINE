@@ -361,7 +361,7 @@ public class FileReadWrite {
                 Optional<ChannelResponse> list_crr = crr.getByReferenceId(logAscend.getReferenceId());
                 // System.out.println("crr: " + list_crr.isPresent());
                 Optional<Channel> list_cr = cr.findByKodeChannel(list_crr.get().getKodeChannel());
-                content[0] = list_crr.get().getBankName().equals("bank mega") ? "OVB" : "SKN";
+                content[0] = "OVB";
                 content[1] = "801";
                 content[2] = newdate;
                 content[4] = String.valueOf(list_crr.get().getAmount()) + "00";

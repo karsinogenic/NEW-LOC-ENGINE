@@ -997,6 +997,9 @@ public class APIMainController {
             ObjectMapper mapper = new ObjectMapper();
             mapper.registerModule(new JavaTimeModule());
             ChannelResponse responseChannel = mapper.convertValue(input, ChannelResponse.class);
+            responseChannel
+                    .setBic(responseChannel.getBic() == null ? aesComponent.getBifastBic() : responseChannel.getBic());
+            // responseChannel
             try {
                 channelResponseRepository.save(responseChannel);
             } catch (Exception e) {
@@ -1019,6 +1022,7 @@ public class APIMainController {
                         "\"referenceId\":\"" + input.get("referenceId") + "\"," +
                         "\"cardNo\": \"" + input.get("cardNo") + "\"," +
                         "\"amount\": \"" + input.get("amount") + "00" + "\"," +
+                        "\"bic\": \"" + input.get("bic") + "00" + "\"," +
                         "\"expirationDate\": \"" + input.get("expDate").toString() + "\"," +
                         "\"posCondCode\": \"" + list_terminal.get().getPoscon() + "\"," +
                         "\"terminalID\": \"" + list_terminal.get().getTerminalId() + "\"," +
@@ -1060,6 +1064,11 @@ public class APIMainController {
                 return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
             }
 
+            // do BIFAST
+            if (!responseChannel.getBic().equals(aesComponent.getBifastBic())) {
+                System.out.println("TEMBAK BIFAST");
+            }
+
             // response.put("detail", "Berhasil menyimpan data");
             return new ResponseEntity<>(response, HttpStatus.OK);
         } else {
@@ -1083,7 +1092,7 @@ public class APIMainController {
         Map<String, Object> response = new HashMap();
         String[] param = { "referenceId", "cardNo", "amount", "planCode", "expDate", "tierCode", "accName",
                 "accNumber", "terminalMerchant", "gcn", "mobileNumber", "bic" };
-        // String[] param_opsional = { "additionalData" };
+        String[] param_opsional = { "additionalData" };
         List<String> compareParam = new ArrayList<String>();
         List<String> newParam = new ArrayList<String>(Arrays.asList(param));
 
@@ -1094,17 +1103,15 @@ public class APIMainController {
         String tierKode = "";
 
         for (Map.Entry<String, Object> entry : inputs.entrySet()) {
-            // if (Arrays.asList(param).contains(entry.getKey())
-            // || Arrays.asList(param_opsional).contains(entry.getKey())) {
-            // compareParam.add(entry.getKey());
-            // response.put("rc", 200);
-            // } else {
-            // response.put("rc", 400);
-            // response.put("detail", "Nama param " + entry.getKey() + " tidak dikenal");
-            // response.put("info", "Gunakan nama param sebagai berikut " +
-            // Arrays.toString(param));
-            // return response;
-            // }
+            if (Arrays.asList(param).contains(entry.getKey())) {
+                compareParam.add(entry.getKey());
+                response.put("rc", 200);
+            } else {
+                response.put("rc", 400);
+                response.put("detail", "Nama param " + entry.getKey() + " tidak dikenal");
+                response.put("info", "Gunakan nama param sebagai berikut " + Arrays.toString(param));
+                return response;
+            }
 
             if (entry.getKey().equals("tierCode")) {
                 // //System.out.println(entry.getValue());
@@ -1314,7 +1321,7 @@ public class APIMainController {
         } catch (Exception e) {
             newMap.put("status", 400);
             newMap.put("detail", "Balikan Ascend tidak sama dengan Database");
-            newMap.put("error", e.toString());
+            // newMap.put("error", e.toString());
             return new ResponseEntity<>(newMap, HttpStatus.NOT_ACCEPTABLE);
         }
     }
@@ -1330,6 +1337,7 @@ public class APIMainController {
         }
 
         String refId;
+        String bic;
         // System.out.println("masuk ascend");
 
         try {
@@ -1341,7 +1349,17 @@ public class APIMainController {
             newMap.put("error", e.getLocalizedMessage());
             return new ResponseEntity<>(newMap, HttpStatus.BAD_REQUEST);
         }
+        try {
+            bic = input.get("bic").toString();
+            // //System.out.println(refId);
+        } catch (Exception e) {
+            newMap.put("status", 400);
+            newMap.put("detail", "bic belum dimasukan");
+            newMap.put("error", e.getLocalizedMessage());
+            return new ResponseEntity<>(newMap, HttpStatus.BAD_REQUEST);
+        }
         input.remove("referenceId");
+        input.remove("bic");
 
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
@@ -1389,7 +1407,7 @@ public class APIMainController {
         }
         jsonObject.put("msg", dataEncrypt);
         newJsonInput.put("data", jsonObject);
-        // //System.out.println(newJsonInput.toString());
+        // System.out.println(newJsonInput.toString());
 
         String ipAscendSale = this.apiConfigRepository.findIpByNama("ASC_sale_new");
         // //System.out.println("siap kirim");
@@ -1443,6 +1461,7 @@ public class APIMainController {
 
             LocalDateTime ldt2 = LocalDateTime.now();
             mapAscend.put("referenceId", refId);
+            // mapAscend.put("bic", bic);
             mapAscend.put("created_at", ldt2);
             mapAscend.put("isGenerated", null);
             mapAscend.put("isGeneratedPPMERL", null);
@@ -1458,18 +1477,144 @@ public class APIMainController {
             // });
 
             LogAscend logAscend = mapper.convertValue(mapAscend, LogAscend.class);
+            logAscend.setBic(bic);
             this.logAscendRepository.save(logAscend);
             newMap.put("status", 200);
             newMap.put("authno", logAscend.getAuth_no());
             newMap.put("detail", "Berhasil Menyimpan Data Dari Ascend");
             return new ResponseEntity<>(newMap, HttpStatus.OK);
         } catch (Exception e) {
+            newMap = mapRespon;
             newMap.put("status", 400);
-            newMap.put("detail", "Balikan Ascend tidak sama dengan Database");
-            newMap.put("error", e.toString());
+            newMap.put("detail", "Grab Ascend Gagal, Lakukan Grab Ulang");
+            newMap.put("new rc", "EX-00");
+            // newMap.put("detail", "Balikan Ascend tidak sama dengan Database");
+            // newMap.put("error", e.toString());
             return new ResponseEntity<>(newMap, HttpStatus.NOT_ACCEPTABLE);
         }
 
+    }
+
+    @GetMapping("regrabAscend")
+    public ResponseEntity<Map> regrab(@RequestParam(required = true) String refid) {
+        Map newMap = new HashMap<>();
+        ObjectMapper mapper = new ObjectMapper();
+        NewAESComponent aesComponentNew = this.aesComponentRepository.findByNama("SALE");
+
+        JSONObject newJsonInput = new JSONObject();
+        newJsonInput.put("channel_id", aesComponentNew.getAesChannelId());
+        newJsonInput.put("service_id", aesComponentNew.getAesServiceId());
+        newJsonInput.put("key_id", aesComponentNew.getAesKeyId());
+        JSONObject dataJson = new JSONObject();
+        LogToAscend lta = new LogToAscend();
+        try {
+            lta = this.logToAscendRepository.findByRefId(refid).get(0);
+            if (lta.getOutput() != null) {
+                newMap.put("status", 400);
+                newMap.put("detail", "Hasil grab sudah didapat");
+                newMap.put("new rc", "EX-02");
+                newMap.put("data", new JSONObject(lta.getOutput()).toMap());
+                return new ResponseEntity<Map>(newMap, null, 200);
+            }
+            lta.setRedialAt(LocalDateTime.now());
+            this.logToAscendRepository.save(lta);
+            dataJson = new JSONObject(lta.getInput());
+        } catch (Exception e) {
+            System.out.println();
+        }
+
+        AESEncryptDecrypt aesEncryptDecrypt = new AESEncryptDecrypt();
+        JSONObject jsonObject = new JSONObject();
+        String dataEncrypt = "";
+        try {
+            dataEncrypt = aesEncryptDecrypt.encrypt(dataJson.toString(), aesComponentNew.getAesKey(),
+                    aesComponentNew.getAesIV());
+
+        } catch (Exception e) {
+
+        }
+        jsonObject.put("msg", dataEncrypt);
+        newJsonInput.put("data", jsonObject);
+
+        String ipAscendSale = this.apiConfigRepository.findIpByNama("ASC_sale_new");
+        // //System.out.println("siap kirim");
+        HTTPRequest httpRequest = new HTTPRequest(aesComponent);
+        String response = "";
+        try {
+            System.out.println("request sale :" + newJsonInput.toString());
+            response = httpRequest.postRequest("http://" + ipAscendSale, newJsonInput.toString());
+            System.out.println("response sale :" + response);
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        Map<String, Object> mapRespon = new HashMap<>();
+        try {
+            mapRespon = mapper.readValue(response, Map.class);
+        } catch (JsonProcessingException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        try {
+            // //System.out.println("aesComponent.getAesKey(),aesComponent.getAesIV(): " +
+            // aesComponent.getAesKey() + " : " +
+            // aesComponent.getAesIV());
+            String decryptData = aesEncryptDecrypt.decrypt(mapRespon.get("data").toString(),
+                    aesComponentNew.getAesKey(),
+                    aesComponentNew.getAesIV());
+            // //System.out.println(decryptData.isBlank());
+            Map<String, Object> mapAscend = mapper.readValue(decryptData, Map.class);
+
+            if (mapAscend.get("rc").equals("00") == false) {
+                // //System.out.println("masuk error");
+
+                this.logToAscendRepository.save(lta);
+
+                LogAscend logAscend = mapper.convertValue(mapAscend, LogAscend.class);
+                logAscend.setReferenceId(refid);
+                LocalDateTime ldt4 = LocalDateTime.now();
+                logAscend.setCreated_at(ldt4);
+                logAscend.setIsGenerated(null);
+                logAscend.setIsGeneratedPPMERL(null);
+                mapAscend.put("status", mapAscend.get("rc").toString());
+                // System.out.println(new JSONObject(mapAscend).toString());
+                this.logAscendRepository.save(logAscend);
+                return new ResponseEntity<>(mapAscend, HttpStatus.BAD_REQUEST);
+            }
+
+            String jsonOutput;
+
+            LocalDateTime ldt2 = LocalDateTime.now();
+            mapAscend.put("referenceId", refid);
+            mapAscend.put("created_at", ldt2);
+            mapAscend.put("isGenerated", null);
+            mapAscend.put("isGeneratedPPMERL", null);
+            jsonOutput = mapper.writeValueAsString(mapAscend);
+
+            lta.setOutput(jsonOutput);
+            this.logToAscendRepository.save(lta);
+
+            // mapAscend.entrySet().forEach(entry -> {
+            // //System.out.println(entry.getKey() + " : " + entry.getValue());
+            // });
+
+            LogAscend logAscend = mapper.convertValue(mapAscend, LogAscend.class);
+            this.logAscendRepository.save(logAscend);
+            newMap.put("status", 200);
+            newMap.put("authno", logAscend.getAuth_no());
+            newMap.put("detail", "Berhasil Menyimpan Data Dari Ascend");
+            return new ResponseEntity<>(newMap, HttpStatus.OK);
+        } catch (Exception e) {
+            newMap = mapRespon;
+            newMap.put("status", 400);
+            newMap.put("detail", "Grab Ascend Gagal, Lakukan Grab Ulang");
+            newMap.put("new rc", "EX-00");
+            // newMap.put("detail", "Balikan Ascend tidak sama dengan Database");
+            // newMap.put("error", e.toString());
+            return new ResponseEntity<>(newMap, HttpStatus.NOT_ACCEPTABLE);
+        }
     }
 
     @GetMapping(value = "/generateFile/SPDEXT")

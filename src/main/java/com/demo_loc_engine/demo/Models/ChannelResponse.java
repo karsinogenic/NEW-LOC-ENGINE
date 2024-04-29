@@ -70,8 +70,8 @@ public class ChannelResponse {
     @Column(name = "detail_status_transfer", columnDefinition = "text")
     private String detailStatusTransfer;
 
-    @Column(name = "bank_name")
-    private String bankName;
+    @Column(name = "bic")
+    private String bic;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -221,12 +221,12 @@ public class ChannelResponse {
         this.additionalData = additionalData;
     }
 
-    public String getBankName() {
-        return bankName;
+    public String getBic() {
+        return bic;
     }
 
-    public void setBankName(String bankName) {
-        this.bankName = bankName;
+    public void setBic(String bic) {
+        this.bic = bic;
     }
 
 }
