@@ -42,6 +42,17 @@ public class AESComponent {
     @Value("${bifast.bic}")
     private String bifastBic;
 
+    @Value("${bifast.url}")
+    private String bifastURL;
+
+    public String getBifastURL() {
+        return bifastURL;
+    }
+
+    public void setBifastURL(String bifastURL) {
+        this.bifastURL = bifastURL;
+    }
+
     public String getBifastBic() {
         return bifastBic;
     }
