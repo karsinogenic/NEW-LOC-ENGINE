@@ -108,6 +108,7 @@ import com.demo_loc_engine.demo.Services.FirebaseService;
 import com.demo_loc_engine.demo.Services.HTTPRequest;
 import com.demo_loc_engine.demo.Services.LogService;
 import com.demo_loc_engine.demo.Services.MFTS;
+import com.demo_loc_engine.demo.Services.RunnableVoidTrx;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -181,26 +182,69 @@ public class APIMainController {
     @Autowired
     public LogService logService;
 
+    @Value("${use.dummy}")
+    public Boolean useDummy;
+
     // @BeforeClass
     // public static void setUpValidator() {
     // ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
     // validator = factory.getValidator();
     // }
 
-    // @GetMapping("/cobaFire")
-    // public ResponseEntity cobaAsc() {
-    // String urlMFTS = this.apiConfigRepository.findIpByNama("MFTS_securitybp");
-    // List<LogAscend> logAscend = this.logAscendRepository.findAll();
-    // NewAESComponent aesComponentNew =
-    // this.aesComponentRepository.findByNama("MFTS_RES");
+    @GetMapping("/voidtrx")
+    public ResponseEntity<Map> voidTrx() throws InterruptedException {
+        Map hasil = new HashMap<>();
+        List<LogAscend> la = this.logAscendRepository.findByStatusTransferAndAuth_noNotNull("F");
+        List<Thread> ltreadh = new ArrayList<>();
+        List<RunnableVoidTrx> runnableVoidTrxs = new ArrayList<>();
+        LogService logService = new LogService();
+        NewAESComponent newaes = this.aesComponentRepository.findByNama("VOID");
+        if (newaes == null) {
+            hasil.put("rc", "LOC-99");
+            hasil.put("rd", "cannot find encrypt component named 'VOID' ");
+            return new ResponseEntity<Map>(hasil, null, 200);
+        }
+        logService.info("Start void batch with total of " + la.size() + (la.size() > 1 ? " datas"
+                : " data") + "\n" + "=".repeat(150));
+        int th_num = 0;
+        for (LogAscend lasc : la) {
+            RunnableVoidTrx rx = new RunnableVoidTrx(lasc, newaes, channelResponseRepository,
+                    terminalMerchantRepository, th_num, aesComponent, apiConfigRepository);
+            Thread thread = new Thread(rx);
+            ltreadh.add(thread);
+            runnableVoidTrxs.add(rx);
+            thread.start();
+            th_num++;
+        }
 
-    // FirebaseService firebaseService = new
-    // FirebaseService(channelResponseRepository,
-    // logAscend.get(logAscend.size() - 1), firebaseConfigRepository,
-    // aesComponentNew, urlMFTS);
-    // Boolean coba = firebaseService.sendToFireBase("F");
-    // return new ResponseEntity<>(HttpStatus.OK);
-    // }
+        for (Thread thread1 : ltreadh) {
+            thread1.join();
+        }
+
+        for (RunnableVoidTrx checkThreads : runnableVoidTrxs) {
+            // finalList.add(checkThreads.hasil());
+        }
+        hasil.put("rc", "00");
+        hasil.put("rd", "OK");
+        hasil.put("data", la);
+
+        return new ResponseEntity<>(hasil, null, 200);
+    }
+
+    public JSONObject dummyVoid() {
+        return new JSONObject("""
+                {
+                    "accountNum" : "4714390010000010",
+                    "amount" : "100000",
+                    "expirationDate" : "2511",
+                    "posCondCode" : "08",
+                    "reffno" : "001481000400",
+                    "terminalID" : "30007319",
+                    "merchantID" : "042600000006756",
+                    "invoiceNum" : "000085"
+                  }
+                    """);
+    }
 
     @GetMapping("/getChannelId")
     public ResponseEntity getChannelId(@RequestParam(required = false) Long id) {
@@ -1022,7 +1066,7 @@ public class APIMainController {
                         "\"referenceId\":\"" + input.get("referenceId") + "\"," +
                         "\"cardNo\": \"" + input.get("cardNo") + "\"," +
                         "\"amount\": \"" + input.get("amount") + "00" + "\"," +
-                        "\"bic\": \"" + input.get("bic") + "00" + "\"," +
+                        "\"bic\": \"" + responseChannel.getBic() + "\"," +
                         "\"expirationDate\": \"" + input.get("expDate").toString() + "\"," +
                         "\"posCondCode\": \"" + list_terminal.get().getPoscon() + "\"," +
                         "\"terminalID\": \"" + list_terminal.get().getTerminalId() + "\"," +

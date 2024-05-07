@@ -33,6 +33,9 @@ public interface LogAscendRepository extends JpaRepository<LogAscend, Long> {
     @Query("select l from LogAscend l where l.referenceId = :ref_id")
     Optional<LogAscend> findByRefId(@Param("ref_id") String refId);
 
+    @Query("select l from LogAscend l where l.statusTransfer = :statusTransfer and l.auth_no is not null")
+    List<LogAscend> findByStatusTransferAndAuth_noNotNull(@Param("statusTransfer") String statusTransfer);
+
     @Query("select l from LogAscend l where l.created_at BETWEEN :start AND :end")
     List<LogAscend> findByCreated_at(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 }
