@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import javax.xml.transform.Source;
@@ -57,18 +58,23 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.StreamingHttpOutputMessage.Body;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.demo_loc_engine.demo.Models.AsccendResponse;
 import com.demo_loc_engine.demo.Models.Channel;
 import com.demo_loc_engine.demo.Models.ChannelResponse;
+import com.demo_loc_engine.demo.Models.ChannelResponseInput;
 import com.demo_loc_engine.demo.Models.CustomerParam;
+import com.demo_loc_engine.demo.Models.IncomingRequestBiFast;
 import com.demo_loc_engine.demo.Models.Kriteria;
 import com.demo_loc_engine.demo.Models.LogAscend;
 import com.demo_loc_engine.demo.Models.LogAscendResponse;
@@ -192,9 +198,24 @@ public class APIMainController {
     // }
 
     @GetMapping("/voidtrx")
-    public ResponseEntity<Map> voidTrx() throws InterruptedException {
+    public ResponseEntity<Map> voidTrx(@RequestParam(required = false) String refid) throws InterruptedException {
         Map hasil = new HashMap<>();
         List<LogAscend> la = this.logAscendRepository.findByStatusTransferAndAuth_noNotNull("F");
+        if (refid != null) {
+            Optional<LogAscend> la_opt = this.logAscendRepository.findByRefId(refid);
+            la = new ArrayList<>();
+            if (!la_opt.isPresent()) {
+                hasil.put("rc", "LOC-98");
+                hasil.put("rd", "cannot find the given refid");
+                return new ResponseEntity<Map>(hasil, null, 200);
+            }
+            if (la_opt.get().getIsvoided()) {
+                hasil.put("rc", "LOC-97");
+                hasil.put("rd", "the given refid already been voided");
+                return new ResponseEntity<Map>(hasil, null, 200);
+            }
+            la.add(la_opt.get());
+        }
         List<Thread> ltreadh = new ArrayList<>();
         List<RunnableVoidTrx> runnableVoidTrxs = new ArrayList<>();
         LogService logService = new LogService();
@@ -221,12 +242,28 @@ public class APIMainController {
             thread1.join();
         }
 
+        JSONArray joinhasil = new JSONArray();
+        List<String> refid_list = new ArrayList<>();
+        List<String> rc_list = new ArrayList<>();
         for (RunnableVoidTrx checkThreads : runnableVoidTrxs) {
-            // finalList.add(checkThreads.hasil());
+            joinhasil.put(checkThreads.hasil().getJSONObject("data"));
+            if (!checkThreads.hasil().getJSONObject("data").isNull("refid")) {
+                refid_list.add(checkThreads.hasil().getJSONObject("data").getString("refid"));
+            }
+            rc_list.add(checkThreads.hasil().getString("rc"));
         }
+        List<LogAscend> ls = this.logAscendRepository.findByListRefId(refid_list);
+        for (int i = 0; i < ls.size(); i++) {
+            // System.out.println("=".repeat(20) + "\n" + ls.get(i).getReferenceId() + " ==
+            // " + refid_list.get(i));
+            ls.get(i).setIsvoided(rc_list.get(i).equals("00") ? true : false);
+        }
+        this.logAscendRepository.saveAll(ls);
         hasil.put("rc", "00");
         hasil.put("rd", "OK");
-        hasil.put("data", la);
+        hasil.put("data", joinhasil.toList());
+        logService.info("Finished void batch with total of " + la.size() + (la.size() > 1 ? " datas"
+                : " data") + joinhasil.toList() + "\n" + "=".repeat(150));
 
         return new ResponseEntity<>(hasil, null, 200);
     }
@@ -244,6 +281,37 @@ public class APIMainController {
                     "invoiceNum" : "000085"
                   }
                     """);
+    }
+
+    @GetMapping("/status")
+    public ResponseEntity<Map> status(@RequestParam String refid) {
+        Map hasil = new HashMap<>();
+        Optional<LogAscend> isi = logAscendRepository.findByRefId(refid);
+        if (!isi.isPresent()) {
+            hasil.put("rc", "EX-69");
+            hasil.put("rd", "Cannot find data of the given refid");
+        }
+        if (!isi.get().getStatusTransfer().isEmpty()) {
+            switch (isi.get().getStatusTransfer()) {
+                case "F":
+
+                    break;
+                case "S":
+
+                    break;
+
+                default:
+                    break;
+            }
+        }
+        return new ResponseEntity<Map>(hasil, null, 200);
+    }
+
+    public JSONObject checkBiFast(String refid) throws Exception {
+        HTTPRequest req = new HTTPRequest(aesComponent);
+        String hasilreq = req.getRequestParamNew(aesComponent.getBifastURL() + "/api/status?refid=" + refid, null, null,
+                null);
+        return new JSONObject(hasilreq);
     }
 
     @GetMapping("/getChannelId")
@@ -586,14 +654,26 @@ public class APIMainController {
 
     @PostMapping("/eligible")
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> cekEligible(@RequestBody Map<String, Object> input)
+    public ResponseEntity<Map<String, Object>> cekEligible(@RequestBody Map<String, Object> input,
+            HttpServletRequest req)
             throws InterruptedException {
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, Object> response = new HashMap<>();
         List<Map<String, Object>> mapList = new ArrayList<>();
 
         JSONObject jsonObject1 = new JSONObject(input);
-        logService.info("/eligible req: " + jsonObject1.toString());
+        // logService.info("/eligible req: " + jsonObject1.toString());
+        logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Request", req.getLocalAddr(),
+                req.getRemoteAddr(), "LOC Engine", "eligible", "cek account", null, null, jsonObject1);
+
+        Map pefindo = pefindoSlikList(input).getBody();
+        if (!pefindo.get("rc").toString().equals("00")) {
+            logService.info2("", String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
+                    req.getRemoteAddr(), "LOC Engine", "eligible", "cek account", pefindo.get("rc").toString(),
+                    null,
+                    new JSONObject(pefindo));
+            return new ResponseEntity<Map<String, Object>>(pefindo, null, 200);
+        }
 
         // System.out.println("pefindo: " + jsonObject1.get("pefindo_data"));
         JSONArray jsonArray = new JSONArray(jsonObject1.get("data").toString());
@@ -634,16 +714,8 @@ public class APIMainController {
         for (CheckThreads checkThreads : lCheckThreads) {
             finalList.add(checkThreads.result());
         }
-        if (finalList.size() > 0) {
 
-        }
         response.put("data", finalList);
-
-        Map pefindo = pefindoSlikList(finalList, input).getBody();
-        // if (pefindo.get("rc").toString().contains("EX")) {
-        response.put("rc", pefindo.get("rc"));
-        response.put("rd", pefindo.get("rd"));
-        // }
 
         // // response.put("data", mapList);
         // int i = 1;
@@ -666,32 +738,24 @@ public class APIMainController {
 
         // response.put("data", checkThreads.result());
 
-        logService.info("/eligible req: " + response.toString());
+        logService.info2("", String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
+                req.getRemoteAddr(), "LOC Engine", "eligible", "cek account", null,
+                null,
+                new JSONObject(response));
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    public ResponseEntity<Map> pefindoSlikList(List<Map> finalList, Map<String, Object> input) {
+    public ResponseEntity<Map> pefindoSlikList(Map<String, Object> input) {
         Map hasil = new HashMap<>();
-        Boolean hasil_bool = false;
-        for (Map map : finalList) {
-            hasil_bool = hasil_bool || (boolean) map.get("bool");
-            System.out.println("hasil bool: " + hasil_bool);
-        }
-        if (!hasil_bool) {
-            hasil.put("rc", "EX-00");
-            hasil.put("rd", "All Card Not Eligible");
-            return new ResponseEntity<>(hasil, null, 200);
-        }
-
-        if (!input.containsKey("pefindo_data") && hasil_bool) {
-            hasil.put("rc", "01");
+        if (!input.containsKey("pefindo_data")) {
+            hasil.put("rc", "00");
             hasil.put("rd", "Eligible Without PefindoData");
             return new ResponseEntity<>(hasil, null, 200);
         }
         // System.out.println("return");
 
+        JSONObject pefindoData = new JSONObject(input);
         try {
-            JSONObject pefindoData = new JSONObject(input);
             // System.out.println("pefindo data: " + pefindoData);
             CheckPefindo checkPefindo = new CheckPefindo();
             String cekParam = checkPefindo.cekParamPefindo(pefindoData.getJSONObject("pefindo_data").toMap());
@@ -715,10 +779,10 @@ public class APIMainController {
         // path = aesComponent.getPefindoUrl() + path;
         // System.out.println("path: " + path);
         try {
-            String hasilHttp = httpRequest.getRequestParamNew(aesComponent.getPefindoUrl(),
-                    null, null, null);
+            String hasilHttp = httpRequest.postRequest(aesComponent.getPefindoUrl(),
+                    pefindoData.getJSONObject("pefindo_data").toString());
             hasilJsonObject = new JSONObject(hasilHttp);
-            if (hasilJsonObject.getString("status").contains("Not")) {
+            if (hasilJsonObject.getString("status").toLowerCase().contains("not")) {
                 hasil.put("rc", "EX-01");
                 hasil.put("rd", "Pefindo Not Eligible");
             } else {
@@ -748,15 +812,26 @@ public class APIMainController {
                             }
                                 """, summary = "Minimal request") }))
 
-            Map<String, Object> input) {
-        logService.info("/cek req: " + input.toString());
+            Map<String, Object> input, HttpServletRequest req) {
+        // logService.info("/cek req: " + input.toString());
+        logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Request", req.getLocalAddr(),
+                req.getRemoteAddr(), "LOC Engine", "cek", "cek card", null, null, new JSONObject(input));
+
         Map response = new HashMap();
         List<String> kode_hasil = new ArrayList<String>();
         if (input.get("channel") == null) {
             response.put("status", "channel tidak dimasukan");
+
+            logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
+                    req.getRemoteAddr(), "LOC Engine", "cek", "cek card", null,
+                    null, new JSONObject(response));
             return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         } else if (input.get("loan") == null) {
             response.put("status", "loan tidak dimasukan");
+
+            logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
+                    req.getRemoteAddr(), "LOC Engine", "cek", "cek card", null,
+                    null, new JSONObject(response));
             return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         }
         Long loan = Long.parseLong(input.get("loan").toString());
@@ -777,6 +852,10 @@ public class APIMainController {
                     value_param = input.get(key_param).toString();
                 } catch (Exception e) {
                     response.put("status", key_param + " tidak dimasukan");
+                    logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
+                            req.getRemoteAddr(), "LOC Engine", "cek", "cek card", null,
+                            null, new JSONObject(response));
+
                     return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
                 }
                 String operator = hasil.getOperator().getNama_operator();
@@ -914,6 +993,9 @@ public class APIMainController {
                     }
                 } else {
                     response.put("status", key_param + " tidak dimasukan");
+                    logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
+                            req.getRemoteAddr(), "LOC Engine", "cek", "cek card", null,
+                            null, new JSONObject(response));
                     return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
                 }
 
@@ -934,8 +1016,10 @@ public class APIMainController {
         Map<String, Object> hasil = calculate((kode_hasil.isEmpty() ? "" : kode_hasil.get(0)), loan);
         hasil.put("channel", (input.get("channel")));
         response.putAll(hasil);
-        logService.info("/cek res: " + response.toString());
 
+        logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
+                req.getRemoteAddr(), "LOC Engine", "cek", "cek card", null,
+                null, new JSONObject(response));
         return new ResponseEntity<>(response, HttpStatus.OK);
 
         // for (Map.Entry mp : input.entrySet()) {
@@ -1018,108 +1102,211 @@ public class APIMainController {
         return "Basic " + Base64.getEncoder().encodeToString(valueToEncode.getBytes());
     }
 
-    @PostMapping(value = "/getChannelResponse", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> getChannelResponse(
-            @RequestBody @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, examples = {
-                    @ExampleObject(name = "Example", value = """
-                            {
-                                \"referenceId\":\"MEG111111111\",
-                                \"cardNo\": \"4714390010000010\",
-                                \"amount\": 10000,
-                                \"planCode": \"MLS-007\",
-                                \"expDate\": \"2511\",
-                                \"accName\":\"NaufalTest\",
-                                \"accNumber\":\"111111111111\",
-                                \"terminalMerchant\": \"LOC\",
-                                \"gcn\": \"12345678\"
-                            }
-                                """, summary = "Minimal request") })) Map<String, Object> input) {
+    // @ResponseStatus(HttpStatus.BAD_REQUEST)
+    // @ExceptionHandler(MethodArgumentNotValidException.class)
+    // public ResponseEntity<Map> unexpected(MethodArgumentNotValidException ex) {
+    // Map hasil = new HashMap<>();
+    // String errorMessage = ex.getAllErrors().get(0).getDefaultMessage();
+
+    // hasil.put("RC", "EX-00");
+    // hasil.put("RD", errorMessage);
+    // return new ResponseEntity<Map>(hasil, null, 200);
+    // }
+
+    @PostMapping(value = "/getChannelResponse")
+    public ResponseEntity<Map<String, Object>> getChannelResponse(@Valid @RequestBody ChannelResponseInput inputnew,
+            HttpServletRequest req)
+            throws Exception {
         Map<String, Object> response = new HashMap();
-        response = cekInputChannelResponse(input);
-        if (response.get("rc").toString().equals("200")) {
-            // //System.out.println("test : " + input.get("createdAt"));
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.registerModule(new JavaTimeModule());
-            ChannelResponse responseChannel = mapper.convertValue(input, ChannelResponse.class);
-            responseChannel
-                    .setBic(responseChannel.getBic() == null ? aesComponent.getBifastBic() : responseChannel.getBic());
-            // responseChannel
-            try {
-                channelResponseRepository.save(responseChannel);
-            } catch (Exception e) {
-                // SqlExceptionHelper sqlEx;
+
+        logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Request", req.getLocalAddr(),
+                req.getRemoteAddr(), "LOC Engine", "getChannelResponse", "Grab Ascend", null,
+                null, new JSONObject(inputnew));
+
+        ObjectMapper mapper = new ObjectMapper();
+
+        List<PlanCode> lists_plancode = this.planCodeRepository.findByPlanCode(inputnew.getPlanCode());
+        if (lists_plancode.size() == 0) {
+            response.put("rc", 400);
+            response.put("detail", "error");
+            response.put("info", "plan code not exist");
+            logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
+                    req.getRemoteAddr(), "LOC Engine", "getChannelResponse", "Grab Ascend",
+                    response.get("rc").toString(),
+                    null, new JSONObject(response));
+            return new ResponseEntity<>(new TreeMap<>(response), HttpStatus.BAD_REQUEST);
+        } else {
+            boolean flag = false;
+            for (PlanCode planCode : lists_plancode) {
+                flag = flag || planCode.getKode_tier().equals(inputnew.getTierCode());
+            }
+            if (!flag) {
                 response.put("rc", 400);
                 response.put("detail", "error");
-                response.put("info", e.getCause().getCause().getLocalizedMessage());
-                return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+                response.put("info", "tier code not exist");
+                logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
+                        req.getRemoteAddr(), "LOC Engine", "getChannelResponse", "Grab Ascend",
+                        response.get("rc").toString(),
+                        null, new JSONObject(response));
+                return new ResponseEntity<>(new TreeMap<>(response), HttpStatus.BAD_REQUEST);
             }
-            // ke Ascend
-
-            Optional<TerminalMerchant> list_terminal = this.terminalMerchantRepository
-                    .findByNama(input.get("terminalMerchant").toString());
-
-            // //System.out.println(list_terminal.get().getPoscon());
-
-            try {
-                String[] expdate = input.get("expDate").toString().split("-");
-                String jsonInput = "{" +
-                        "\"referenceId\":\"" + input.get("referenceId") + "\"," +
-                        "\"cardNo\": \"" + input.get("cardNo") + "\"," +
-                        "\"amount\": \"" + input.get("amount") + "00" + "\"," +
-                        "\"bic\": \"" + responseChannel.getBic() + "\"," +
-                        "\"expirationDate\": \"" + input.get("expDate").toString() + "\"," +
-                        "\"posCondCode\": \"" + list_terminal.get().getPoscon() + "\"," +
-                        "\"terminalID\": \"" + list_terminal.get().getTerminalId() + "\"," +
-                        "\"merchantID\": \"" + list_terminal.get().getMerchantId() + "\"" +
-                        "}";
-                JSONObject newJsonObject = new JSONObject(jsonInput);
-                // ipLoc = this.apiConfigRepository.findIpByNama("LOC");
-                // HttpRequest request = HttpRequest.newBuilder()
-                // .uri(URI.create("http://" + ipLoc + "/loc/api/toAscendNew"))
-                // // .uri(URI.create("http://127.0.0.1:8081/api/toAscendNew"))
-                // .POST(BodyPublishers.ofString(jsonInput))
-                // .header("Content-type", "application/json")
-                // .header("Authorization", getBasicAuthenticationHeader("7777777", "7777777"))
-                // .build();
-                // //System.out.println(jsonInput);
-                // HttpClient client = HttpClient.newBuilder().build();
-                // HttpResponse<?> httpResponse = client.send(request,
-                // HttpResponse.BodyHandlers.ofString());
-                // //System.out.println(httpResponse.body().toString());
-                // Map<String, Object> hasil_map =
-                // mapper.readValue(httpResponse.body().toString(),
-                // new TypeReference<Map<String, Object>>() {
-                // });
-                Map<String, Object> hasil_map = this.toAscendNew(null, newJsonObject.toMap()).getBody();
-                System.out.println("hasil ascend new: " + new JSONObject(hasil_map).toString());
-                if (hasil_map.get("status").toString().equals("200")) {
-                    response.put("rc", 200);
-                    response.put("authno", hasil_map.get("authno"));
-                    response.put("detail", "Berhasil kirim ke Ascend");
-                } else {
-                    response.put("rc", 400);
-                    response = hasil_map;
-                }
-            } catch (Exception e) {
-                response.put("rc", 400);
-                response.put("detail", "Gagal ke Ascend");
-                // response.put("info", e.ge());
-                e.printStackTrace();
-                return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
-            }
-
-            // do BIFAST
-            if (!responseChannel.getBic().equals(aesComponent.getBifastBic())) {
-                System.out.println("TEMBAK BIFAST");
-            }
-
-            // response.put("detail", "Berhasil menyimpan data");
-            return new ResponseEntity<>(response, HttpStatus.OK);
-        } else {
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         }
 
+        // //System.out.println("test : " + input.get("createdAt"));
+        mapper.registerModule(new JavaTimeModule());
+        ChannelResponse responseChannel = mapper.convertValue(inputnew,
+                ChannelResponse.class);
+        responseChannel
+                .setBic(responseChannel.getBic() == null ? aesComponent.getBifastBic() : responseChannel.getBic());
+        responseChannel.setCreatedAt(LocalDateTime.now());
+        // responseChannel
+        try {
+            channelResponseRepository.save(responseChannel);
+        } catch (Exception e) {
+            // SqlExceptionHelper sqlEx;
+            response.put("rc", 400);
+            response.put("detail", "error");
+            response.put("info", e.getCause().getCause().getLocalizedMessage());
+            logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
+                    req.getRemoteAddr(), "LOC Engine", "getChannelResponse", "Grab Ascend",
+                    response.get("rc").toString(),
+                    null, new JSONObject(response));
+            return new ResponseEntity<>(new TreeMap<>(response), HttpStatus.BAD_REQUEST);
+        }
+        // ke Ascend
+        Map input = mapper.convertValue(inputnew, Map.class);
+
+        Optional<TerminalMerchant> list_terminal = this.terminalMerchantRepository
+                .findByNama(input.get("terminalMerchant").toString());
+
+        // //System.out.println(list_terminal.get().getPoscon());
+        String authnox = null;
+        try {
+            String[] expdate = input.get("expDate").toString().split("-");
+            String jsonInput = "{" +
+                    "\"referenceId\":\"" + input.get("referenceId") + "\"," +
+                    "\"cardNo\": \"" + input.get("cardNo") + "\"," +
+                    "\"amount\": \"" + input.get("amount") + "00" + "\"," +
+                    "\"bic\": \"" + responseChannel.getBic() + "\"," +
+                    "\"expirationDate\": \"" + input.get("expDate").toString() + "\"," +
+                    "\"posCondCode\": \"" + list_terminal.get().getPoscon() + "\"," +
+                    "\"terminalID\": \"" + list_terminal.get().getTerminalId() + "\"," +
+                    "\"merchantID\": \"" + list_terminal.get().getMerchantId() + "\"" +
+                    "}";
+            JSONObject newJsonObject = new JSONObject(jsonInput);
+
+            Map<String, Object> hasil_map = this.toAscendNew(null,
+                    newJsonObject.toMap()).getBody();
+            // System.out.println("hasil ascend new: " + new
+            // JSONObject(hasil_map).toString());
+            if (hasil_map.get("status").toString().equals("200")) {
+                response.put("rc", 200);
+                response.put("rc_grab", "00");
+                response.put("rd_grab", "Berhasil kirim ke Ascend");
+                response.put("authno", hasil_map.get("authno"));
+                response.put("data_grab", hasil_map);
+
+            } else {
+                response.put("rc", 400);
+                response.put("rc_grab", "ASC-" + hasil_map.get("rc"));
+                response.put("rd_grab", hasil_map.get("rd"));
+                response.put("rc_trf", null);
+                response.put("rd_trf", null);
+                response.put("data_trf", null);
+                response.put("data_grab", hasil_map);
+                // response = hasil_map;
+                logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
+                        req.getRemoteAddr(), "LOC Engine", "getChannelResponse", "Grab Ascend",
+                        response.get("rc").toString(),
+                        null, new JSONObject(response));
+                return new ResponseEntity<>(new TreeMap<>(response), HttpStatus.BAD_REQUEST);
+            }
+        } catch (Exception e) {
+            response.put("rc", 400);
+            response.put("rc_grab", "ASC-99");
+            response.put("rd_grab", "Gagal ke Ascend");
+            // response.put("info", e.ge());
+            e.printStackTrace();
+            logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
+                    req.getRemoteAddr(), "LOC Engine", "getChannelResponse", "Grab Ascend",
+                    response.get("rc").toString(),
+                    null, new JSONObject(response));
+
+            return new ResponseEntity<>(new TreeMap<>(response), HttpStatus.BAD_REQUEST);
+        }
+        System.out.println("curr res: " + response.toString());
+
+        // do BIFAST
+        if (!responseChannel.getBic().equals(aesComponent.getBifastBic())) {
+            JSONObject outbifast = this.doBiFast(responseChannel);
+            System.out.println(outbifast);
+            // response.put("data", outbifast.toMap());
+            // if (outbifast.getString("rc").equals("00")) {
+            // try {
+            response.put("rc_trf", outbifast.getString("rc"));
+            response.put("rd_trf", outbifast.getString("rd"));
+            response.put("data_trf",
+                    !outbifast.isNull("data") ? outbifast.getJSONObject("data").toMap() : null);
+            // } catch (Exception e) {get
+            // response.put("rc_trf", null);
+            // response.put("rd_trf", null);
+            // response.put("data_trx", null);
+
+            // // TODO: handle exception
+            // }
+
+            // } else {
+            // response.put("rc_trf", outbifast.getString("rc"));
+            // }
+            System.out.println(response.toString());
+            Optional<LogAscend> repost = this.logAscendRepository
+                    .findByAuthCode(response.get("authno").toString());
+            // if(response.get("rc_trf").toString().equals("BIF-00")){
+            // Log
+            // }else
+            if (outbifast.isNull("data")) {
+                repost.get().setStatusTransfer("P");
+            } else if (outbifast.getJSONObject("data").getString("trx_status").equals("ACTC")) {
+                repost.get().setStatusTransfer("S");
+            } else {
+                repost.get().setStatusTransfer("F");
+            }
+            this.logAscendRepository.save(repost.get());
+
+        }
+
+        // // response.put("detail", "Berhasil menyimpan data");
+        response = new TreeMap<>(response);
+        logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
+                req.getRemoteAddr(), "LOC Engine", "getChannelResponse", "Grab Ascend", response.get("rc").toString(),
+                null, new JSONObject(response));
+        return new ResponseEntity<>(response, HttpStatus.OK);
+
         // return null;
+    }
+
+    public JSONObject doBiFast(ChannelResponse responseChannel) throws Exception {
+        IncomingRequestBiFast inputdata = new IncomingRequestBiFast();
+        inputdata.setAccnum(responseChannel.getAccNumber());
+        inputdata.setAmount(Double.valueOf(responseChannel.getAmount().toString()));
+        inputdata.setBeneficiary_bic(responseChannel.getBic());
+        inputdata.setChName("TELE1");
+        inputdata.setRefId(responseChannel.getReferenceId());
+        AESEncryptDecrypt aesEncryptDecrypt = new AESEncryptDecrypt();
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map inputmap = objectMapper.convertValue(inputdata, Map.class);
+
+        JSONObject inputjson = new JSONObject(inputmap);
+        HTTPRequest httpRequest = new HTTPRequest(aesComponent);
+        // System.out.println("input: " + inputjson.toString());
+        String reqbifast = httpRequest.postRequestBasicAuth(aesComponent.getBifastURL() + "/api/transfer",
+                inputjson.toString(), "loc",
+                aesEncryptDecrypt.encrypt("MEG@202404NAUFAL", "49UffL7GyUKz5gK2",
+                        "r22sQb8ygfDyY9Gu"));
+        System.out.println("bifast out: " + reqbifast);
+        JSONObject outbifast = new JSONObject(reqbifast);
+        return outbifast;
     }
 
     public ResponseEntity<Map<String, Object>> hitAscend(String dataJson) {
@@ -1132,93 +1319,100 @@ public class APIMainController {
         return diff;
     }
 
-    public Map<String, Object> cekInputChannelResponse(Map<String, Object> inputs) {
-        Map<String, Object> response = new HashMap();
-        String[] param = { "referenceId", "cardNo", "amount", "planCode", "expDate", "tierCode", "accName",
-                "accNumber", "terminalMerchant", "gcn", "mobileNumber", "bic" };
-        String[] param_opsional = { "additionalData" };
-        List<String> compareParam = new ArrayList<String>();
-        List<String> newParam = new ArrayList<String>(Arrays.asList(param));
+    // public Map<String, Object> cekInputChannelResponse(Map<String, Object>
+    // inputs) {
+    // Map<String, Object> response = new HashMap();
+    // String[] param = { "referenceId", "cardNo", "amount", "planCode", "expDate",
+    // "tierCode", "accName",
+    // "accNumber", "terminalMerchant", "gcn", "mobileNumber", "bic" };
+    // String[] param_opsional = { "additionalData" };
+    // List<String> compareParam = new ArrayList<String>();
+    // List<String> newParam = new ArrayList<String>(Arrays.asList(param));
 
-        List<String> allTier = this.tierRepository.allTier();
-        List<String> allPlanCode = this.planCodeRepository.allPlanCode();
+    // List<String> allTier = this.tierRepository.allTier();
+    // List<String> allPlanCode = this.planCodeRepository.allPlanCode();
 
-        // //System.out.println(allTier.toString());
-        String tierKode = "";
+    // // //System.out.println(allTier.toString());
+    // String tierKode = "";
 
-        for (Map.Entry<String, Object> entry : inputs.entrySet()) {
-            if (Arrays.asList(param).contains(entry.getKey())) {
-                compareParam.add(entry.getKey());
-                response.put("rc", 200);
-            } else {
-                response.put("rc", 400);
-                response.put("detail", "Nama param " + entry.getKey() + " tidak dikenal");
-                response.put("info", "Gunakan nama param sebagai berikut " + Arrays.toString(param));
-                return response;
-            }
+    // for (Map.Entry<String, Object> entry : inputs.entrySet()) {
+    // if (Arrays.asList(param).contains(entry.getKey())) {
+    // compareParam.add(entry.getKey());
+    // response.put("rc", 200);
+    // } else {
+    // response.put("rc", 400);
+    // response.put("detail", "Nama param " + entry.getKey() + " tidak dikenal");
+    // response.put("info", "Gunakan nama param sebagai berikut " +
+    // Arrays.toString(param));
+    // return response;
+    // }
 
-            if (entry.getKey().equals("tierCode")) {
-                // //System.out.println(entry.getValue());
-                // //System.out.println(entry.getValue());
-                if (allTier.contains(entry.getValue()) == false) {
-                    response.put("rc", 400);
-                    response.put("detail", "Value dari  '" + entry.getKey() + "' tidak ditemukan di database");
-                    return response;
-                } else {
-                    tierKode = entry.getValue().toString();
-                }
+    // if (entry.getKey().equals("tierCode")) {
+    // // //System.out.println(entry.getValue());
+    // // //System.out.println(entry.getValue());
+    // if (allTier.contains(entry.getValue()) == false) {
+    // response.put("rc", 400);
+    // response.put("detail", "Value dari '" + entry.getKey() + "' tidak ditemukan
+    // di database");
+    // return response;
+    // } else {
+    // tierKode = entry.getValue().toString();
+    // }
 
-            }
+    // }
 
-            if (entry.getKey().equals("bankName")) {
-                try {
-                    if (!inputs.get("bankName").toString().toLowerCase().equals("bank mega")) {
-                        response.put("rc", 400);
-                        response.put("detail", "accName harus ada isi");
-                        return response;
-                    }
-                } catch (Exception e) {
-                    // TODO: handle exception
-                }
-            }
+    // if (entry.getKey().equals("bankName")) {
+    // try {
+    // if (!inputs.get("bankName").toString().toLowerCase().equals("bank mega")) {
+    // response.put("rc", 400);
+    // response.put("detail", "accName harus ada isi");
+    // return response;
+    // }
+    // } catch (Exception e) {
+    // // TODO: handle exception
+    // }
+    // }
 
-        }
+    // }
 
-        try {
-            List<String> listPlanCode = this.planCodeRepository.findPlanCodeNameByKodeTier(tierKode);
-            // //System.out.println(listPlanCode.toString());
-            // //System.out.println(this.planCodeRepository.findByKodeTier(tierKode).get(0).getPlan_code());
-            if (!listPlanCode.contains(inputs.get("planCode").toString())) {
-                response.put("rc", 400);
-                response.put("detail", "Value dari 'planCode' tidak ditemukan di database");
-                return response;
-            }
-        } catch (Exception e) {
-            response.put("rc", 400);
-            response.put("detail", "Value dari 'planCode' tidak ditemukan di database");
-            return response;
-        }
+    // try {
+    // List<String> listPlanCode =
+    // this.planCodeRepository.findPlanCodeNameByKodeTier(tierKode);
+    // // //System.out.println(listPlanCode.toString());
+    // //
+    // //System.out.println(this.planCodeRepository.findByKodeTier(tierKode).get(0).getPlan_code());
+    // if (!listPlanCode.contains(inputs.get("planCode").toString())) {
+    // response.put("rc", 400);
+    // response.put("detail", "Value dari 'planCode' tidak ditemukan di database");
+    // return response;
+    // }
+    // } catch (Exception e) {
+    // response.put("rc", 400);
+    // response.put("detail", "Value dari 'planCode' tidak ditemukan di database");
+    // return response;
+    // }
 
-        // List<String> hasilParam = findDifference(newParam, compareParam);
-        // // //System.out.println(hasilParam);
-        // if (hasilParam.size() > 0 && hasilParam.contains(param_opsional) == false) {
-        // response.put("rc", 400);
-        // response.put("detail", "Nama param '" + hasilParam.get(0) + "' tidak
-        // dimasukan");
-        // }
+    // // List<String> hasilParam = findDifference(newParam, compareParam);
+    // // // //System.out.println(hasilParam);
+    // // if (hasilParam.size() > 0 && hasilParam.contains(param_opsional) == false)
+    // {
+    // // response.put("rc", 400);
+    // // response.put("detail", "Nama param '" + hasilParam.get(0) + "' tidak
+    // // dimasukan");
+    // // }
 
-        // }
-        Date date = new Date();
-        LocalDateTime ldt = LocalDateTime.now();
-        if (inputs.get("tierCode") != null) {
-            String kode_channnel = inputs.get("tierCode").toString().split("-")[0];
-            inputs.put("kodeChannel", kode_channnel);
-        }
-        inputs.put("createdAt", ldt);
-        return response;
-    }
+    // // }
+    // Date date = new Date();
+    // LocalDateTime ldt = LocalDateTime.now();
+    // if (inputs.get("tierCode") != null) {
+    // String kode_channnel = inputs.get("tierCode").toString().split("-")[0];
+    // inputs.put("kodeChannel", kode_channnel);
+    // }
+    // inputs.put("createdAt", ldt);
+    // return response;
+    // }
 
-    // @GetMapping(value = "/tes")
+    // // @GetMapping(value = "/tes")
     // public String tes() {
     // Optional<ChannelResponse> cr_list =
     // this.channelResponseRepository.getByReferenceId("asdasd1156");
@@ -1447,7 +1641,7 @@ public class APIMainController {
             dataEncrypt = aesEncryptDecrypt.encrypt(dataJson.toString(), aesComponentNew.getAesKey(),
                     aesComponentNew.getAesIV());
         } catch (Exception e) {
-
+            System.out.println("gagal encrypt");
         }
         jsonObject.put("msg", dataEncrypt);
         newJsonInput.put("data", jsonObject);
@@ -1456,86 +1650,103 @@ public class APIMainController {
         String ipAscendSale = this.apiConfigRepository.findIpByNama("ASC_sale_new");
         // //System.out.println("siap kirim");
         HTTPRequest httpRequest = new HTTPRequest(aesComponent);
-        String response = "";
+        String response = null;
         try {
             System.out.println("request sale :" + newJsonInput.toString());
             response = httpRequest.postRequest("http://" + ipAscendSale, newJsonInput.toString());
             System.out.println("response sale :" + response);
         } catch (Exception e) {
+            System.out.println("timeout sale loc");
             // TODO Auto-generated catch block
-            e.printStackTrace();
+            // e.printStackTrace();
         }
 
-        Map<String, Object> mapRespon = new HashMap<>();
-        try {
-            mapRespon = mapper.readValue(response, Map.class);
-        } catch (JsonProcessingException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+        JSONObject mapRespon = response != null ? new JSONObject(response) : null;
+        if (mapRespon.isNull("data")) {
+            System.out.println("no data return");
+            Map newmaps = mapRespon.toMap();
+            newmaps.put("status", 400);
+            return new ResponseEntity<>(mapRespon.toMap(), HttpStatus.BAD_REQUEST);
+
         }
 
+        String decryptData = null;
         try {
             // //System.out.println("aesComponent.getAesKey(),aesComponent.getAesIV(): " +
             // aesComponent.getAesKey() + " : " +
             // aesComponent.getAesIV());
-            String decryptData = aesEncryptDecrypt.decrypt(mapRespon.get("data").toString(),
+            decryptData = aesEncryptDecrypt.decrypt(mapRespon.get("data").toString(),
                     aesComponentNew.getAesKey(),
                     aesComponentNew.getAesIV());
-            // //System.out.println(decryptData.isBlank());
-            Map<String, Object> mapAscend = mapper.readValue(decryptData, Map.class);
+        } catch (Exception e) {
+            System.out.println("decrypt failed");
+            // e.printStackTrace();
+            // newMap = mapRespon;
+            // newMap.put("status", 400);
+            // newMap.put("detail", "Grab Ascend Gagal, Lakukan Grab Ulang");
+            // // newMap.put("data", mapAscend);
+            // // newMap.put("new rc", "EX-00");
+            // // newMap.put("detail", "Balikan Ascend tidak sama dengan Database");
+            // // newMap.put("error", e.toString());
+            // return new ResponseEntity<>(newMap, HttpStatus.NOT_ACCEPTABLE);
+        }
 
-            if (mapAscend.get("rc").equals("00") == false) {
-                // //System.out.println("masuk error");
-                List<LogToAscend> findRefId = this.logToAscendRepository.findByRefId(refId);
-                logToAscend = findRefId.get(0);
-                logToAscend.setOutput(decryptData);
-                this.logToAscendRepository.save(logToAscend);
+        JSONObject mapAscend = new JSONObject(decryptData);
+        System.out.println("hasil asc: " + mapAscend);
 
-                LogAscend logAscend = mapper.convertValue(mapAscend, LogAscend.class);
-                logAscend.setReferenceId(refId);
-                LocalDateTime ldt4 = LocalDateTime.now();
-                logAscend.setCreated_at(ldt4);
-                logAscend.setIsGenerated(null);
-                logAscend.setIsGeneratedPPMERL(null);
-                mapAscend.put("status", mapAscend.get("rc").toString());
-                // System.out.println(new JSONObject(mapAscend).toString());
-                this.logAscendRepository.save(logAscend);
-                return new ResponseEntity<>(mapAscend, HttpStatus.BAD_REQUEST);
-            }
-
-            LocalDateTime ldt2 = LocalDateTime.now();
-            mapAscend.put("referenceId", refId);
-            // mapAscend.put("bic", bic);
-            mapAscend.put("created_at", ldt2);
-            mapAscend.put("isGenerated", null);
-            mapAscend.put("isGeneratedPPMERL", null);
-            jsonOutput = mapper.writeValueAsString(mapAscend);
-
+        if (!mapAscend.get("rc").equals("00")) {
+            // //System.out.println("masuk error");
             List<LogToAscend> findRefId = this.logToAscendRepository.findByRefId(refId);
             logToAscend = findRefId.get(0);
-            logToAscend.setOutput(jsonOutput);
+            logToAscend.setOutput(decryptData);
             this.logToAscendRepository.save(logToAscend);
 
-            // mapAscend.entrySet().forEach(entry -> {
-            // //System.out.println(entry.getKey() + " : " + entry.getValue());
-            // });
-
-            LogAscend logAscend = mapper.convertValue(mapAscend, LogAscend.class);
+            LogAscend logAscend = mapper.convertValue(mapAscend.toMap(), LogAscend.class);
+            logAscend.setReferenceId(refId);
+            LocalDateTime ldt4 = LocalDateTime.now();
+            logAscend.setCreated_at(ldt4);
+            logAscend.setIsGenerated(null);
+            logAscend.setIsGeneratedPPMERL(null);
+            logAscend.setIsvoided(false);
             logAscend.setBic(bic);
+            mapAscend.put("status", mapAscend.get("rc").toString());
+            // System.out.println(new JSONObject(mapAscend).toString());
             this.logAscendRepository.save(logAscend);
-            newMap.put("status", 200);
-            newMap.put("authno", logAscend.getAuth_no());
-            newMap.put("detail", "Berhasil Menyimpan Data Dari Ascend");
-            return new ResponseEntity<>(newMap, HttpStatus.OK);
-        } catch (Exception e) {
-            newMap = mapRespon;
-            newMap.put("status", 400);
-            newMap.put("detail", "Grab Ascend Gagal, Lakukan Grab Ulang");
-            newMap.put("new rc", "EX-00");
-            // newMap.put("detail", "Balikan Ascend tidak sama dengan Database");
-            // newMap.put("error", e.toString());
-            return new ResponseEntity<>(newMap, HttpStatus.NOT_ACCEPTABLE);
+            return new ResponseEntity<>(mapAscend.toMap(), HttpStatus.BAD_REQUEST);
         }
+
+        LocalDateTime ldt2 = LocalDateTime.now();
+        mapAscend.put("referenceId", refId);
+        // mapAscend.put("bic", bic);
+        mapAscend.put("created_at", ldt2);
+
+        List<LogToAscend> findRefId = this.logToAscendRepository.findByRefId(refId);
+        logToAscend = findRefId.get(0);
+        logToAscend.setOutput(mapAscend.toString());
+        this.logToAscendRepository.save(logToAscend);
+
+        // mapAscend.entrySet().forEach(entry -> {
+        // //System.out.println(entry.getKey() + " : " + entry.getValue());
+        // });
+
+        LogAscend logAscend = mapper.convertValue(mapAscend.toMap(), LogAscend.class);
+        logAscend.setBic(bic);
+        logAscend.setIsvoided(false);
+        this.logAscendRepository.save(logAscend);
+        newMap.put("status", 200);
+        newMap.put("authno", logAscend.getAuth_no());
+        newMap.put("detail", "Berhasil Menyimpan Data Dari Ascend");
+        return new ResponseEntity<>(newMap, HttpStatus.OK);
+        // } catch (Exception e) {
+        // // newMap = mapRespon;
+        // newMap.put("status", 400);
+        // newMap.put("detail", "Grab Ascend Gagal, Lakukan Grab Ulang");
+        // // newMap.put("data", mapAscend);
+        // // newMap.put("new rc", "EX-00");
+        // // newMap.put("detail", "Balikan Ascend tidak sama dengan Database");
+        // // newMap.put("error", e.toString());
+        // return new ResponseEntity<>(newMap, HttpStatus.NOT_ACCEPTABLE);
+        // }
 
     }
 
@@ -1585,9 +1796,9 @@ public class APIMainController {
         HTTPRequest httpRequest = new HTTPRequest(aesComponent);
         String response = "";
         try {
-            System.out.println("request sale :" + newJsonInput.toString());
+            // System.out.println("request sale :" + newJsonInput.toString());
             response = httpRequest.postRequest("http://" + ipAscendSale, newJsonInput.toString());
-            System.out.println("response sale :" + response);
+            // System.out.println("response sale :" + response);
         } catch (Exception e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -2288,10 +2499,13 @@ public class APIMainController {
     private APICustomer apiCustomer;
 
     @PostMapping("/cekCustomer")
-    public ResponseEntity<Map<String, Object>> cekCustomer(@RequestBody Map<String, Object> input) {
+    public ResponseEntity<Map<String, Object>> cekCustomer(@RequestBody Map<String, Object> input,
+            HttpServletRequest req) {
 
         // APICustomer apiCustomer = new APICustomer();
-        logService.info("/cekCustomer req: " + input.toString());
+        logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Request", req.getLocalAddr(),
+                req.getRemoteAddr(), "LOC Engine", "cekCustomer", "Cek Customer", null,
+                null, new JSONObject(input));
         Boolean eligible = true;
         Map<String, Object> response = new HashMap<String, Object>();
 
@@ -2326,6 +2540,11 @@ public class APIMainController {
         if (input.get("kodeChannel") == null) {
             response.put("rc", 400);
             response.put("rd", "tidak ada kodeChannel");
+
+            logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
+                    req.getRemoteAddr(), "LOC Engine", "cekCustomer", "Cek Customer",
+                    response.get("rc").toString(),
+                    null, new JSONObject(response));
             return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         }
         List<CustomerParam> list = this.customerParamRepository.findByKodeChannel(input.get("kodeChannel").toString());
@@ -2334,6 +2553,11 @@ public class APIMainController {
             if (input.get(customerParam.getNama_param()) == null) {
                 response.put("rc", 400);
                 response.put("rd", customerParam.getNama_param() + " tidak dimasukan");
+
+                logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
+                        req.getRemoteAddr(), "LOC Engine", "cekCustomer", "Cek Customer",
+                        response.get("rc").toString(),
+                        null, new JSONObject(response));
                 return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
             }
 
@@ -2525,12 +2749,20 @@ public class APIMainController {
         if (eligible) {
             response.put("rc", "200");
             response.put("rd", "Eligible");
-            logService.info("/cekCustomer res: " + response.toString());
+            // logService.info("/cekCustomer res: " + response.toString());
+            logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
+                    req.getRemoteAddr(), "LOC Engine", "cekCustomer", "Cek Customer",
+                    response.get("rc").toString(),
+                    null, new JSONObject(response));
             return new ResponseEntity<>(response, HttpStatus.OK);
         } else {
             response.put("rc", "209");
             response.put("rd", "Not Eligible");
-            logService.info("/cekCustomer res: " + response.toString());
+            // logService.info("/cekCustomer res: " + response.toString());
+            logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
+                    req.getRemoteAddr(), "LOC Engine", "cekCustomer", "Cek Customer",
+                    response.get("rc").toString(),
+                    null, new JSONObject(response));
             return new ResponseEntity<>(response, HttpStatus.OK);
         }
 

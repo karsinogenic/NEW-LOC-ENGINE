@@ -1,7 +1,7 @@
 <configuration>
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%-5level | %d{HH:mm:ss.SSS} | %msg%n | </pattern>
+            <pattern>%-5level | %d{HH:mm:ss.SSS} | %msg%n  </pattern>
         </encoder>
     </appender>
     <!-- <appender name="PIPELINE1" class="ch.qos.logback.core.FileAppender">

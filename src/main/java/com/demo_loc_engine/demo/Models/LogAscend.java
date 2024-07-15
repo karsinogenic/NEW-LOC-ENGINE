@@ -65,6 +65,17 @@ public class LogAscend {
     @Column(name = "nama_file")
     private String namaFile;
 
+    @Column(name = "is_voided", nullable = false, columnDefinition = "tinyint(1) default false")
+    private Boolean isvoided;
+
+    public Boolean getIsvoided() {
+        return isvoided;
+    }
+
+    public void setIsvoided(Boolean isvoided) {
+        this.isvoided = isvoided;
+    }
+
     public String getBic() {
         return bic;
     }

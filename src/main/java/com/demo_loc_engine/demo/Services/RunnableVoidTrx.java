@@ -31,6 +31,8 @@ public class RunnableVoidTrx implements Runnable {
 
     public APIConfigRepository apiConfigRepository;
 
+    public AESEncryptDecrypt aesEncryptDecrypt;
+
     public int th_num;
 
     public RunnableVoidTrx(LogAscend logasc, NewAESComponent aescomp,
@@ -54,13 +56,17 @@ public class RunnableVoidTrx implements Runnable {
         logService = new LogService();
 
         if (!chres.isPresent()) {
-            logService.info("chres");
+            jsonhasil.put("rc", "LOC-96");
+            jsonhasil.put("rd", "Cannot find Existing ChannelResponse");
+            logService.info(jsonhasil.toString());
         } else if (!termmerch.isPresent()) {
-            logService.info("termmerch");
-
+            jsonhasil.put("rc", "LOC-95");
+            jsonhasil.put("rd", "Cannot find Existing TerminalMerchant");
+            logService.info(jsonhasil.toString());
         } else {
             JSONObject body = generateBody(chres.get(), termmerch.get());
-            JSONObject request = callVoidSale(body);
+            JSONObject request = callVoidSale(body, chres.get().getReferenceId());
+            jsonhasil = request;
         }
 
     }
@@ -70,10 +76,10 @@ public class RunnableVoidTrx implements Runnable {
     }
 
     public JSONObject generateBody(ChannelResponse chresp, TerminalMerchant tmerc) {
-        AESEncryptDecrypt aesEncryptDecrypt = new AESEncryptDecrypt();
+        aesEncryptDecrypt = new AESEncryptDecrypt();
         String dummy = """
                 {
-                    "accountNum" : "4714390010000010",
+                    "cardNo" : "4714390010000010",
                     "amount" : "100000",
                     "expirationDate" : "2511",
                     "posCondCode" : "08",
@@ -83,9 +89,9 @@ public class RunnableVoidTrx implements Runnable {
                     "invoiceNum" : "000085"
                   }
                     """;
-        JSONObject jsonObject = new JSONObject(dummy);
-        jsonObject.put("accountNum", chresp.getAccNumber());
-        jsonObject.put("amount", chresp.getAmount());
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("cardNo", chresp.getCardNo());
+        jsonObject.put("amount", chresp.getAmount().toString() + "00");
         jsonObject.put("expirationDate", chresp.getExpDate());
         jsonObject.put("posCondCode", tmerc.getPoscon());
         jsonObject.put("reffno", logasc.getReffno());
@@ -118,15 +124,19 @@ public class RunnableVoidTrx implements Runnable {
         return main;
     }
 
-    public JSONObject callVoidSale(JSONObject input) {
+    public JSONObject callVoidSale(JSONObject input, String refid) {
         HTTPRequest httpRequest = new HTTPRequest(oldaes);
         String url = apiConfigRepository.findIpByNama("ASC_void");
 
         JSONObject hasil = new JSONObject();
         try {
             String response = httpRequest.postRequest("http://" + url, input.toString());
-            JSONObject jsonObject = new JSONObject(response);
+            JSONObject hasilJson = new JSONObject(response);
+            JSONObject jsonObject = new JSONObject(
+                    aesEncryptDecrypt.decrypt(hasilJson.getString("data"), aescomp.getAesKey(), aescomp.getAesIV()));
             logService.info("Output | Thread" + th_num + ": " + jsonObject.toString());
+
+            jsonObject.put("refid", refid);
 
             if (jsonObject.get("rc").toString().toLowerCase().contains("00")) {
                 hasil.put("rc", "00");
