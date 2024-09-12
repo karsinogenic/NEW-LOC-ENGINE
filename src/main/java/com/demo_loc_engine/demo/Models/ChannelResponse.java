@@ -5,6 +5,7 @@ import java.util.Date;
 
 import org.springframework.data.annotation.CreatedDate;
 
+import groovyjarjarantlr4.v4.runtime.misc.NotNull;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -12,6 +13,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
 
 @Entity
 @Table(name = "channel_response")
@@ -27,12 +29,14 @@ public class ChannelResponse {
     @Column(name = "terminal_merchant")
     private String terminalMerchant;
 
+    @NotBlank
     @Column(name = "acc_number")
     private String accNumber;
 
     @Column(name = "acc_name")
     private String accName;
 
+    @NotBlank
     @Column(name = "card_no", nullable = false)
     private String cardNo;
 
@@ -63,8 +67,8 @@ public class ChannelResponse {
     @Column(name = "to_firebase", columnDefinition = "boolean default false")
     private Boolean toFirebase;
 
-    @Column(name = "status_transfer", columnDefinition = "boolean default false")
-    private Boolean statusTransfer;
+    @Column(name = "status_transfer")
+    private String statusTransfer;
 
     @Lob
     @Column(name = "detail_status_transfer", columnDefinition = "text")
@@ -197,11 +201,11 @@ public class ChannelResponse {
         this.toFirebase = toFirebase;
     }
 
-    public Boolean getStatusTransfer() {
+    public String getStatusTransfer() {
         return statusTransfer;
     }
 
-    public void setStatusTransfer(Boolean statusTransfer) {
+    public void setStatusTransfer(String statusTransfer) {
         this.statusTransfer = statusTransfer;
     }
 

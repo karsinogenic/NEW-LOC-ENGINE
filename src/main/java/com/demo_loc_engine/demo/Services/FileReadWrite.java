@@ -107,7 +107,9 @@ public class FileReadWrite {
             // System.out.println(logAscend.getReferenceId());
             Optional<ChannelResponse> cr_list = crr.getByReferenceId(logAscend.getReferenceId());
             if (cr_list.isPresent() == false) {
-                return false;
+                System.out.println(logAscend.getReferenceId() + " tidak ada di channel response");
+                
+                // return false;
             } else {
 
                 try {
@@ -204,8 +206,10 @@ public class FileReadWrite {
             Optional<ChannelResponse> cr_list = crr.getByReferenceId(logAscend.getReferenceId());
 
             if (cr_list.isPresent() == false) {
-                System.out.println("tidak ada di reference");
-                return false;
+                System.out.println(logAscend.getReferenceId() + " tidak ada di channel response");
+
+                // System.out.println("tidak ada di reference");
+                // return false;
             } else {
 
                 // prog
@@ -369,8 +373,9 @@ public class FileReadWrite {
                 content[6] = logAscend.getReferenceId();
                 content[15] = list_crr.get().getAccNumber();
                 content[16] = acc_debit;
-                content[17] = list_crr.get().getAccName().length() > 20 ? list_crr.get().getAccName().substring(0, 20)
-                        : list_crr.get().getAccName();
+                // content[17] = list_crr.get().getAccName().length() > 20 ? list_crr.get().getAccName().substring(0, 20)
+                //         : list_crr.get().getAccName();
+                content[17] = "";
                 content[26] = logAscend.getReferenceId();
 
                 str_content += String.join(",", content) + "\n";
@@ -378,7 +383,9 @@ public class FileReadWrite {
                 if (list_crr.isPresent()) {
                     amount += list_crr.get().getAmount();
                 } else {
-                    System.out.println("ga ada");
+                    System.out.println(logAscend.getReferenceId() + " tidak ada di channel response");
+
+                    // System.out.println("ga ada");
                 }
 
             }
@@ -576,6 +583,130 @@ public class FileReadWrite {
 
     }
 
+
+    public Boolean writeFilePAYEXT(List<LogAscend> list, String nama_path, String nama_file, String[] arr_date,
+            ChannelResponseRepository crr, String mId, PlanCodeRepository pcr,TerminalMerchantRepository tmr) {
+        // File file = new File("src/main/resources/ChannelResponse/write.txt");
+        String filler_header = " ".repeat(134);
+        String header = "H" + "PAYEXT    " + arr_date[0] + arr_date[1] + arr_date[2] + filler_header;
+
+        String footer = "T000000000000";
+        Integer pjgList = list.size();
+        // System.out.println(filler_header.length());
+        footer = footer.substring(0, footer.length() - pjgList.toString().length()) + pjgList;
+        footer = footer + " ".repeat(140);
+
+        Integer i = 1;
+        String content = "";
+        String date_content = arr_date[0].substring(2) + arr_date[1] + arr_date[2];
+
+        for (LogAscend logAscend : list) {
+            String record_type = "D";
+            String poi = "09";
+            String type = "4";
+            String seq = "0".repeat(7-String.valueOf(i).length())+String.valueOf(i);
+            i++;
+            String cc_num = " ".repeat(19);
+            String proc_ind = "D";
+            String curr_code = "360";
+            String datePost = String.valueOf(logAscend.getCreated_at().getYear()).substring(2)
+            +(logAscend.getCreated_at().getMonthValue() < 10 ? ("0"+logAscend.getCreated_at().getMonthValue()):logAscend.getCreated_at().getMonthValue())
+            +(logAscend.getCreated_at().getDayOfMonth() < 10 ? ("0"+logAscend.getCreated_at().getDayOfMonth()):logAscend.getCreated_at().getDayOfMonth());
+            String approval_code = "0".repeat(6);
+            String description = " ".repeat(40);
+            String fee = "0".repeat(10);
+            String fee1 = "0".repeat(12);
+            String fee_desc = " ".repeat(40);
+            String usage = "315";
+            
+            Optional<ChannelResponse> cr_list = crr.getByReferenceId(logAscend.getReferenceId());
+            
+            if (!cr_list.isPresent()) {
+                System.out.println(logAscend.getReferenceId() + " tidak ada di channel response");
+
+                // System.out.println("tidak ada di reference");
+                // return false;
+            } else {
+                cc_num = cr_list.get().getCardNo() + " ".repeat(19-cr_list.get().getCardNo().length());
+                Optional<TerminalMerchant> tm_opt = tmr.findByNama(cr_list.get().getTerminalMerchant());
+                //fee
+                try {
+                    String temp_fee = String.valueOf(tm_opt.get().getPaymentFee());
+                    fee = fee.substring(0,fee.length()-temp_fee.length())+temp_fee+"00";
+                } catch (Exception e) {
+                    System.out.println("=============fee exception==========");
+                    System.out.println(e.getLocalizedMessage());
+                    System.out.println("====================================");
+
+                }
+
+                //desc
+                try {
+                    description = String.valueOf(tm_opt.get().getPaymentFeeDesc())+" ".repeat(40-tm_opt.get().getPaymentFeeDesc().length());
+                } catch (Exception e) {
+                    System.out.println("============tf-desc exception==========");
+                    System.out.println(e.getLocalizedMessage());
+                    System.out.println("====================================");
+                }
+
+               
+                String constant = record_type + poi + type + seq + cc_num + curr_code + fee + 
+                proc_ind + datePost + approval_code + description + fee1 + fee_desc + usage;
+
+                content += constant + System.getProperty("line.separator");
+            }
+        }
+
+        try {
+            FileWriter fw = new FileWriter(nama_path + "/" + nama_file, false);
+            BufferedWriter writer = new BufferedWriter(fw);
+
+            writer.write(header + System.getProperty("line.separator") + content + footer);
+            writer.newLine();
+            writer.close();
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println(e.toString());
+            return false;
+        }
+
+    }
+
+    public String payext(List<LogAscend> list, ChannelResponseRepository crr, PlanCodeRepository pcr, String mId,TerminalMerchantRepository tmr) {
+        LocalDate date = LocalDate.now();
+        if (date.toString().equals(oldDate) == false) {
+            iterPPMERL = 0;
+        }
+        iterPPMERL++;
+        String nama_folder = date.toString();
+        String nama_path = "opt/PAYEXT/" + nama_folder;
+        String[] arr_date = nama_folder.split("-");
+
+        String nama_file = "PAYEXTLOC" + ((iterPPMERL < 10) ? ("0" + iterPPMERL) : (iterPPMERL)) + "."
+                + arr_date[0].substring(2)
+                + arr_date[1] + arr_date[2];
+        // System.out.println("nama_file = " + nama_file);
+
+        // Optional<ChannelResponse> cr_list = crr.getByReferenceId("amitest8999");
+        // System.out.println(cr_list.get().getCardNo());
+
+        try {
+            Files.createDirectories(Paths.get(nama_path));
+            Boolean wrBool = writeFilePAYEXT(list, nama_path, nama_file, arr_date, crr, mId, pcr,tmr);
+            if (wrBool == false) {
+                return "FAIL";
+            }
+            // date = date.plusDays(1);
+            oldDate = date.toString();
+            return "Berhasil membuat file cek pada path:'" + nama_path + "'";
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            return "FAIL";
+        }
+
+    }
     // public JSONObject fireBase(ChannelResponse cr) {
     // JSONObject main = new JSONObject();
     // main.put("key_id", "AXCVSFDJKAGDKAGDKAFG");

@@ -15,4 +15,7 @@ public interface TierRepository extends JpaRepository<Tier, Long> {
 
     @Query("select distinct e.kode_tier from Tier e where e.kode_tier like %:kode_channel% and e.is_active = true")
     String[] findKodeTierDistinct(@Param("kode_channel") String kode_channel);
+
+    @Query("select e from Tier e where e.kode_tier =:kode_tier and e.is_active = true")
+    List<Tier> findByKode_tier(String kode_tier);
 }

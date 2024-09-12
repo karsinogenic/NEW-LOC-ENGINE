@@ -17,7 +17,7 @@ public class LogToAscend {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long Id;
 
-    @Column(name = "reference_id", nullable = false)
+    @Column(name = "reference_id", nullable = false,unique = true)
     private String referenceId;
 
     @Column(columnDefinition = "TEXT")

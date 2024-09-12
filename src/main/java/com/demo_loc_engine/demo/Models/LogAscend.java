@@ -44,6 +44,12 @@ public class LogAscend {
     @Column(name = "generated_at")
     private LocalDateTime generatedAt;
 
+    @Column(name = "is_generated_payext", columnDefinition = "tinyint(1) default null")
+    private Boolean isGeneratedPAYEXT;
+
+    @Column(name = "generated_at_payext")
+    private LocalDateTime generatedAtPAYEXT;
+
     @Column(name = "is_generated_ppmerl", columnDefinition = "tinyint(1) default null")
     private Boolean isGeneratedPPMERL;
 
@@ -82,6 +88,22 @@ public class LogAscend {
 
     public void setBic(String bic) {
         this.bic = bic;
+    }
+
+    public Boolean getIsGeneratedPAYEXT() {
+        return isGeneratedPAYEXT;
+    }
+
+    public void setIsGeneratedPAYEXT(Boolean isGeneratedPAYEXT) {
+        this.isGeneratedPAYEXT = isGeneratedPAYEXT;
+    }
+
+    public LocalDateTime getGeneratedAtPAYEXT() {
+        return generatedAtPAYEXT;
+    }
+
+    public void setGeneratedAtPAYEXT(LocalDateTime generatedAtPAYEXT) {
+        this.generatedAtPAYEXT = generatedAtPAYEXT;
     }
 
     public Boolean getIsGeneratedPPMERL() {

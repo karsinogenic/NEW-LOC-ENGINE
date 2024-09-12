@@ -1,7 +1,6 @@
 package com.demo_loc_engine.demo.Models;
 
 import jakarta.persistence.*;
-import jakarta.persistence.GeneratedValue;
 
 @Entity
 @Table(name = "terminal_merchant")
@@ -28,6 +27,23 @@ public class TerminalMerchant {
 
     @Column(name = "acc_debit")
     private String accDebit;
+
+    @Column(name = "payext", nullable = false,columnDefinition = "tinyint(1) default 0")
+    private Boolean payext;
+
+    @Column(name = "payment_fee",nullable = false,columnDefinition = "BIGINT(20) default 0")
+    private Long paymentFee;
+
+    @Column(name = "payment_fee_desc",length = 40)
+    private String paymentFeeDesc;
+
+    public Long getPaymentFee() {
+        return paymentFee;
+    }
+
+    public void setPaymentFee(Long paymentFee) {
+        this.paymentFee = paymentFee;
+    }
 
     public Long getId() {
         return id;
@@ -83,6 +99,22 @@ public class TerminalMerchant {
 
     public void setAccDebit(String accDebit) {
         this.accDebit = accDebit;
+    }
+
+    public String getPaymentFeeDesc() {
+        return paymentFeeDesc;
+    }
+
+    public void setPaymentFeeDesc(String paymentFeeDesc) {
+        this.paymentFeeDesc = paymentFeeDesc;
+    }
+
+    public Boolean getPayext() {
+        return payext;
+    }
+
+    public void setPayext(Boolean payext) {
+        this.payext = payext;
     }
 
 }

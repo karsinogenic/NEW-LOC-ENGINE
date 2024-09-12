@@ -202,7 +202,7 @@ public class APIMainController {
         Map hasil = new HashMap<>();
         List<LogAscend> la = this.logAscendRepository.findByStatusTransferAndAuth_noNotNull("F");
         if (refid != null) {
-            Optional<LogAscend> la_opt = this.logAscendRepository.findByRefId(refid);
+            Optional<LogAscend> la_opt = this.logAscendRepository.findByRefId2(refid);
             la = new ArrayList<>();
             if (!la_opt.isPresent()) {
                 hasil.put("rc", "LOC-98");
@@ -246,11 +246,15 @@ public class APIMainController {
         List<String> refid_list = new ArrayList<>();
         List<String> rc_list = new ArrayList<>();
         for (RunnableVoidTrx checkThreads : runnableVoidTrxs) {
-            joinhasil.put(checkThreads.hasil().getJSONObject("data"));
-            if (!checkThreads.hasil().getJSONObject("data").isNull("refid")) {
-                refid_list.add(checkThreads.hasil().getJSONObject("data").getString("refid"));
+            if(checkThreads.hasil().isNull("data")){
+                logService.info("no data :"+checkThreads.hasil());
+            }else{
+                joinhasil.put(checkThreads.hasil().getJSONObject("data"));
+                if (!checkThreads.hasil().getJSONObject("data").isNull("refid")) {
+                    refid_list.add(checkThreads.hasil().getJSONObject("data").getString("refid"));
+                }
+                rc_list.add(checkThreads.hasil().getString("rc"));
             }
-            rc_list.add(checkThreads.hasil().getString("rc"));
         }
         List<LogAscend> ls = this.logAscendRepository.findByListRefId(refid_list);
         for (int i = 0; i < ls.size(); i++) {
@@ -475,8 +479,8 @@ public class APIMainController {
             map.put("error", violations.iterator().next().getMessage());
             // throw new ConstraintViolationException(violations);
             // return new mapEntity<Map<String, Object>>(response,
-            // HttpStatus.BAD_REQUEST);
-            return new ResponseEntity<>(map, HttpStatus.BAD_REQUEST);
+            // HttpStatus.OK);
+            return new ResponseEntity<>(map, HttpStatus.OK);
         }
         try {
             input.setCreatedAt(Date.from(Instant.now()));
@@ -491,7 +495,7 @@ public class APIMainController {
             map.put("rc", 400);
             map.put("rd", "Gagal");
             map.put("error", e.getCause().getCause().getLocalizedMessage());
-            return new ResponseEntity<>(map, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(map, HttpStatus.OK);
         }
         return new ResponseEntity<>(map, HttpStatus.OK);
     }
@@ -534,8 +538,8 @@ public class APIMainController {
             map.put("error", violations.iterator().next().getMessage());
             // throw new ConstraintViolationException(violations);
             // return new mapEntity<Map<String, Object>>(response,
-            // HttpStatus.BAD_REQUEST);
-            return new ResponseEntity<>(map, HttpStatus.BAD_REQUEST);
+            // HttpStatus.OK);
+            return new ResponseEntity<>(map, HttpStatus.OK);
         }
 
         try {
@@ -549,7 +553,7 @@ public class APIMainController {
             map.put("rc", 400);
             map.put("rd", "Gagal");
             map.put("error", e.getCause().getCause().getLocalizedMessage());
-            return new ResponseEntity<>(map, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(map, HttpStatus.OK);
         }
         return new ResponseEntity<>(map, HttpStatus.OK);
     }
@@ -575,8 +579,8 @@ public class APIMainController {
                 map.put("error", violations.iterator().next().getMessage());
                 // throw new ConstraintViolationException(violations);
                 // return new mapEntity<Map<String, Object>>(response,
-                // HttpStatus.BAD_REQUEST);
-                return new ResponseEntity<>(map, HttpStatus.BAD_REQUEST);
+                // HttpStatus.OK);
+                return new ResponseEntity<>(map, HttpStatus.OK);
             }
             this.tierRepository.save(input);
             return new ResponseEntity<Map<String, Object>>(map, HttpStatus.OK);
@@ -584,7 +588,7 @@ public class APIMainController {
             // //System.out.println(e.toString());
             map.put("status", 400);
             map.put("detail", e.getCause().getCause().getLocalizedMessage());
-            return new ResponseEntity<Map<String, Object>>(map, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<Map<String, Object>>(map, HttpStatus.OK);
         }
     }
 
@@ -601,8 +605,8 @@ public class APIMainController {
             map.put("error", violations.iterator().next().getMessage());
             // throw new ConstraintViolationException(violations);
             // return new mapEntity<Map<String, Object>>(response,
-            // HttpStatus.BAD_REQUEST);
-            return new ResponseEntity<>(map, HttpStatus.BAD_REQUEST);
+            // HttpStatus.OK);
+            return new ResponseEntity<>(map, HttpStatus.OK);
         }
         try {
             map.put("rc", 200);
@@ -615,7 +619,7 @@ public class APIMainController {
             map.put("rc", 400);
             map.put("rd", "Gagal");
             map.put("error", e.getCause().getCause().getLocalizedMessage());
-            return new ResponseEntity<>(map, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(map, HttpStatus.OK);
         }
         return new ResponseEntity<>(map, HttpStatus.OK);
     }
@@ -633,8 +637,8 @@ public class APIMainController {
             map.put("error", violations.iterator().next().getMessage());
             // throw new ConstraintViolationException(violations);
             // return new mapEntity<Map<String, Object>>(response,
-            // HttpStatus.BAD_REQUEST);
-            return new ResponseEntity<>(map, HttpStatus.BAD_REQUEST);
+            // HttpStatus.OK);
+            return new ResponseEntity<>(map, HttpStatus.OK);
         }
         try {
             map.put("rc", 200);
@@ -647,7 +651,7 @@ public class APIMainController {
             map.put("rc", 400);
             map.put("rd", "Gagal");
             map.put("error", e.getCause().getCause().getLocalizedMessage());
-            return new ResponseEntity<>(map, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(map, HttpStatus.OK);
         }
         return new ResponseEntity<>(map, HttpStatus.OK);
     }
@@ -825,14 +829,14 @@ public class APIMainController {
             logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
                     req.getRemoteAddr(), "LOC Engine", "cek", "cek card", null,
                     null, new JSONObject(response));
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(response, HttpStatus.OK);
         } else if (input.get("loan") == null) {
             response.put("status", "loan tidak dimasukan");
 
             logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
                     req.getRemoteAddr(), "LOC Engine", "cek", "cek card", null,
                     null, new JSONObject(response));
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(response, HttpStatus.OK);
         }
         Long loan = Long.parseLong(input.get("loan").toString());
         String[] distinct_kode = this.tierRepository.findKodeTierDistinct(input.get("channel").toString());
@@ -856,7 +860,7 @@ public class APIMainController {
                             req.getRemoteAddr(), "LOC Engine", "cek", "cek card", null,
                             null, new JSONObject(response));
 
-                    return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+                    return new ResponseEntity<>(response, HttpStatus.OK);
                 }
                 String operator = hasil.getOperator().getNama_operator();
                 if (value_param != null) {
@@ -996,7 +1000,7 @@ public class APIMainController {
                     logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
                             req.getRemoteAddr(), "LOC Engine", "cek", "cek card", null,
                             null, new JSONObject(response));
-                    return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+                    return new ResponseEntity<>(response, HttpStatus.OK);
                 }
 
                 if (status_kode == false) {
@@ -1102,7 +1106,7 @@ public class APIMainController {
         return "Basic " + Base64.getEncoder().encodeToString(valueToEncode.getBytes());
     }
 
-    // @ResponseStatus(HttpStatus.BAD_REQUEST)
+    // @ResponseStatus(HttpStatus.OK)
     // @ExceptionHandler(MethodArgumentNotValidException.class)
     // public ResponseEntity<Map> unexpected(MethodArgumentNotValidException ex) {
     // Map hasil = new HashMap<>();
@@ -1118,6 +1122,7 @@ public class APIMainController {
             HttpServletRequest req)
             throws Exception {
         Map<String, Object> response = new HashMap();
+        logService.info("========================CH Response========================");
 
         logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Request", req.getLocalAddr(),
                 req.getRemoteAddr(), "LOC Engine", "getChannelResponse", "Grab Ascend", null,
@@ -1134,7 +1139,9 @@ public class APIMainController {
                     req.getRemoteAddr(), "LOC Engine", "getChannelResponse", "Grab Ascend",
                     response.get("rc").toString(),
                     null, new JSONObject(response));
-            return new ResponseEntity<>(new TreeMap<>(response), HttpStatus.BAD_REQUEST);
+                    logService.info("========================CH Response========================");
+
+            return new ResponseEntity<>(new TreeMap<>(response), HttpStatus.OK);
         } else {
             boolean flag = false;
             for (PlanCode planCode : lists_plancode) {
@@ -1148,7 +1155,9 @@ public class APIMainController {
                         req.getRemoteAddr(), "LOC Engine", "getChannelResponse", "Grab Ascend",
                         response.get("rc").toString(),
                         null, new JSONObject(response));
-                return new ResponseEntity<>(new TreeMap<>(response), HttpStatus.BAD_REQUEST);
+                        logService.info("========================CH Response========================");
+
+                return new ResponseEntity<>(new TreeMap<>(response), HttpStatus.OK);
             }
         }
 
@@ -1159,6 +1168,42 @@ public class APIMainController {
         responseChannel
                 .setBic(responseChannel.getBic() == null ? aesComponent.getBifastBic() : responseChannel.getBic());
         responseChannel.setCreatedAt(LocalDateTime.now());
+
+        List<Tier> listT = this.tierRepository.findByKode_tier(inputnew.getTierCode());
+        if(listT.isEmpty()){
+            response.put("rc", "LOC-90");
+            response.put("detail", "tier code tidak ditemukan");
+            return new ResponseEntity<Map<String,Object>>(response, null,200);
+        }
+        // Optional<Channel> newch =this.channelRepository.findByKodeChannel(listT.get(0).getKode_channel());
+        responseChannel.setKodeChannel(listT.get(0).getKode_channel());
+        // if(list.size()==0){}
+
+        Optional<ChannelResponse> oldchres = this.channelResponseRepository.getByReferenceId(responseChannel.getReferenceId());
+        Optional<LogAscend> logres = this.logAscendRepository.findByRefId(responseChannel.getReferenceId());
+        Long logid = null;
+        if(!logres.isPresent()&&oldchres.isPresent()){
+            System.out.println("tiban response ch");
+            responseChannel.setId(oldchres.get().getId());
+        }
+        if(logres.isPresent() && oldchres.isPresent()){
+            if(!logres.get().getRc().equals("00")){
+                System.out.println("tiban response ch");
+
+                responseChannel.setId(oldchres.get().getId());
+                logid = logres.get().getId();
+            }else{
+                response.put("rc", "01");
+                response.put("detail", "Grab ascend sebelumnya telah berhasil");
+                logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
+                    req.getRemoteAddr(), "LOC Engine", "getChannelResponse", "Grab Ascend",
+                    response.get("rc").toString(),
+                    null, new JSONObject(response));
+                    logService.info("========================CH Response========================");
+
+                return new ResponseEntity<Map<String,Object>>(response, null, 200);
+            }
+        }
         // responseChannel
         try {
             channelResponseRepository.save(responseChannel);
@@ -1171,7 +1216,9 @@ public class APIMainController {
                     req.getRemoteAddr(), "LOC Engine", "getChannelResponse", "Grab Ascend",
                     response.get("rc").toString(),
                     null, new JSONObject(response));
-            return new ResponseEntity<>(new TreeMap<>(response), HttpStatus.BAD_REQUEST);
+                    logService.info("========================CH Response========================");
+
+            return new ResponseEntity<>(new TreeMap<>(response), HttpStatus.OK);
         }
         // ke Ascend
         Map input = mapper.convertValue(inputnew, Map.class);
@@ -1219,20 +1266,23 @@ public class APIMainController {
                         req.getRemoteAddr(), "LOC Engine", "getChannelResponse", "Grab Ascend",
                         response.get("rc").toString(),
                         null, new JSONObject(response));
-                return new ResponseEntity<>(new TreeMap<>(response), HttpStatus.BAD_REQUEST);
+                        logService.info("========================CH Response========================");
+
+                return new ResponseEntity<>(new TreeMap<>(response), HttpStatus.OK);
             }
         } catch (Exception e) {
             response.put("rc", 400);
             response.put("rc_grab", "ASC-99");
             response.put("rd_grab", "Gagal ke Ascend");
             // response.put("info", e.ge());
-            e.printStackTrace();
+            // e.printStackTrace();
             logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
                     req.getRemoteAddr(), "LOC Engine", "getChannelResponse", "Grab Ascend",
                     response.get("rc").toString(),
                     null, new JSONObject(response));
+            logService.info("========================CH Response========================");
 
-            return new ResponseEntity<>(new TreeMap<>(response), HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(new TreeMap<>(response), HttpStatus.OK);
         }
         System.out.println("curr res: " + response.toString());
 
@@ -1258,20 +1308,32 @@ public class APIMainController {
             // } else {
             // response.put("rc_trf", outbifast.getString("rc"));
             // }
-            System.out.println(response.toString());
+            // System.out.println(response.toString());
             Optional<LogAscend> repost = this.logAscendRepository
                     .findByAuthCode(response.get("authno").toString());
+            Optional<ChannelResponse> repost_cr = this.channelResponseRepository
+                    .getByReferenceId(repost.get().getReferenceId());
             // if(response.get("rc_trf").toString().equals("BIF-00")){
             // Log
             // }else
             if (outbifast.isNull("data")) {
-                repost.get().setStatusTransfer("P");
+                try {
+                    repost.get().setStatusTransfer("F");
+                    repost_cr.get().setStatusTransfer("F");
+                } catch (Exception e) {
+                    repost.get().setStatusTransfer("F");
+                    repost_cr.get().setStatusTransfer("F");
+                }
+                
             } else if (outbifast.getJSONObject("data").getString("trx_status").equals("ACTC")) {
                 repost.get().setStatusTransfer("S");
+                repost_cr.get().setStatusTransfer("S");
             } else {
                 repost.get().setStatusTransfer("F");
+                repost_cr.get().setStatusTransfer("F");
             }
             this.logAscendRepository.save(repost.get());
+            this.channelResponseRepository.save(repost_cr.get());
 
         }
 
@@ -1280,12 +1342,14 @@ public class APIMainController {
         logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
                 req.getRemoteAddr(), "LOC Engine", "getChannelResponse", "Grab Ascend", response.get("rc").toString(),
                 null, new JSONObject(response));
+        logService.info("========================CH Response========================");
+
         return new ResponseEntity<>(response, HttpStatus.OK);
 
         // return null;
     }
 
-    public JSONObject doBiFast(ChannelResponse responseChannel) throws Exception {
+    public JSONObject doBiFast(ChannelResponse responseChannel) {
         IncomingRequestBiFast inputdata = new IncomingRequestBiFast();
         inputdata.setAccnum(responseChannel.getAccNumber());
         inputdata.setAmount(Double.valueOf(responseChannel.getAmount().toString()));
@@ -1300,13 +1364,23 @@ public class APIMainController {
         JSONObject inputjson = new JSONObject(inputmap);
         HTTPRequest httpRequest = new HTTPRequest(aesComponent);
         // System.out.println("input: " + inputjson.toString());
-        String reqbifast = httpRequest.postRequestBasicAuth(aesComponent.getBifastURL() + "/api/transfer",
-                inputjson.toString(), "loc",
-                aesEncryptDecrypt.encrypt("MEG@202404NAUFAL", "49UffL7GyUKz5gK2",
-                        "r22sQb8ygfDyY9Gu"));
-        System.out.println("bifast out: " + reqbifast);
-        JSONObject outbifast = new JSONObject(reqbifast);
-        return outbifast;
+        try {
+            String reqbifast = httpRequest.postRequestBasicAuth(aesComponent.getBifastURL() + "/api/transfer",
+                    inputjson.toString(), "loc",
+                    aesEncryptDecrypt.encrypt("MEG@202404NAUFAL", "49UffL7GyUKz5gK2",
+                            "r22sQb8ygfDyY9Gu"));
+            System.out.println("bifast out: " + reqbifast);
+            JSONObject outbifast = new JSONObject(reqbifast);
+            return outbifast;
+        } catch (Exception e) {
+            JSONObject outbifast = new JSONObject("""
+                {
+                    "rc":"BIF-45",
+                    "rd":"Something wrong with bifast engine"
+                }
+                    """);
+            return outbifast;
+        }
     }
 
     public ResponseEntity<Map<String, Object>> hitAscend(String dataJson) {
@@ -1449,7 +1523,7 @@ public class APIMainController {
             newMap.put("status", 400);
             newMap.put("detail", "referenceId belum dimasukan");
             newMap.put("error", e.getLocalizedMessage());
-            return new ResponseEntity<>(newMap, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(newMap, HttpStatus.OK);
         }
         input.remove("referenceId");
 
@@ -1472,7 +1546,7 @@ public class APIMainController {
             newMap.put("status", 400);
             newMap.put("detail", "Gagal menyimpan data ke LogToAscend");
             newMap.put("error", e.getLocalizedMessage());
-            return new ResponseEntity<>(newMap, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(newMap, HttpStatus.OK);
 
         }
 
@@ -1520,7 +1594,7 @@ public class APIMainController {
                 logAscend.setIsGeneratedPPMERL(false);
                 this.logAscendRepository.save(logAscend);
 
-                return new ResponseEntity<>(newMap, HttpStatus.BAD_REQUEST);
+                return new ResponseEntity<>(newMap, HttpStatus.OK);
             }
             // //System.out.println("test: " + hasil.get("rc"));
         } catch (Exception e) {
@@ -1573,19 +1647,23 @@ public class APIMainController {
         if (input == null) {
             input = input1;
         }
-
+        
         String refId;
         String bic;
+        List<LogToAscend> lta;
+        Optional<LogAscend> la;
         // System.out.println("masuk ascend");
-
+        
         try {
             refId = input.get("referenceId").toString();
+            lta = this.logToAscendRepository.findByRefId(refId);
+            la = this.logAscendRepository.findByRefId(refId);
             // //System.out.println(refId);
         } catch (Exception e) {
             newMap.put("status", 400);
             newMap.put("detail", "referenceId belum dimasukan");
             newMap.put("error", e.getLocalizedMessage());
-            return new ResponseEntity<>(newMap, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(newMap, HttpStatus.OK);
         }
         try {
             bic = input.get("bic").toString();
@@ -1594,7 +1672,7 @@ public class APIMainController {
             newMap.put("status", 400);
             newMap.put("detail", "bic belum dimasukan");
             newMap.put("error", e.getLocalizedMessage());
-            return new ResponseEntity<>(newMap, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(newMap, HttpStatus.OK);
         }
         input.remove("referenceId");
         input.remove("bic");
@@ -1613,12 +1691,17 @@ public class APIMainController {
             logToAscend.setCreatedAt(ldt);
             logToAscend.setInput(jsonInput);
             logToAscend.setReferenceId(refId);
+            if(!lta.isEmpty()){
+                System.out.println("tiban log to ascend");
+
+                logToAscend.setId(lta.get(0).getId());
+            }
             this.logToAscendRepository.save(logToAscend);
         } catch (Exception e) {
             newMap.put("status", 400);
             newMap.put("detail", "Gagal menyimpan data ke LogToAscend");
             newMap.put("error", e.getLocalizedMessage());
-            return new ResponseEntity<>(newMap, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(newMap, HttpStatus.OK);
 
         }
 
@@ -1666,7 +1749,7 @@ public class APIMainController {
             System.out.println("no data return");
             Map newmaps = mapRespon.toMap();
             newmaps.put("status", 400);
-            return new ResponseEntity<>(mapRespon.toMap(), HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(mapRespon.toMap(), HttpStatus.OK);
 
         }
 
@@ -1711,8 +1794,14 @@ public class APIMainController {
             logAscend.setBic(bic);
             mapAscend.put("status", mapAscend.get("rc").toString());
             // System.out.println(new JSONObject(mapAscend).toString());
+            if(la.isPresent()){
+                if(!la.get().getRc().equals("00")){
+                    System.out.println("tiban log ascend");
+                    logAscend.setId(la.get().getId());
+                }
+            }
             this.logAscendRepository.save(logAscend);
-            return new ResponseEntity<>(mapAscend.toMap(), HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(mapAscend.toMap(), HttpStatus.OK);
         }
 
         LocalDateTime ldt2 = LocalDateTime.now();
@@ -1730,6 +1819,12 @@ public class APIMainController {
         // });
 
         LogAscend logAscend = mapper.convertValue(mapAscend.toMap(), LogAscend.class);
+        if(la.isPresent()){
+            if(!la.get().getRc().equals("00")){
+                System.out.println("tiban log ascend");
+                logAscend.setId(la.get().getId());
+            }
+        }
         logAscend.setBic(bic);
         logAscend.setIsvoided(false);
         this.logAscendRepository.save(logAscend);
@@ -1836,7 +1931,7 @@ public class APIMainController {
                 mapAscend.put("status", mapAscend.get("rc").toString());
                 // System.out.println(new JSONObject(mapAscend).toString());
                 this.logAscendRepository.save(logAscend);
-                return new ResponseEntity<>(mapAscend, HttpStatus.BAD_REQUEST);
+                return new ResponseEntity<>(mapAscend, HttpStatus.OK);
             }
 
             String jsonOutput;
@@ -1880,7 +1975,7 @@ public class APIMainController {
         FileReadWrite frw = new FileReadWrite();
         // //System.out.println("coba1: " + frw.tes().get().getReferenceId());
         List<LogAscend> list_logAscend = this.logAscendRepository
-                .findByIsNotGenerated(aesComponent.getBifastBic());
+                .findByIsNotGeneratedOld();
 
         Optional<TerminalMerchant> list_terminal = this.terminalMerchantRepository
                 .findByNama("LOC");
@@ -1901,7 +1996,7 @@ public class APIMainController {
         if (spdext.contains("FAIL")) {
             response.put("rc", 400);
             response.put("status", "Gagal membuat file SPDEXT");
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(response, HttpStatus.OK);
         }
 
         for (LogAscend logAscend : list_logAscend) {
@@ -1924,7 +2019,7 @@ public class APIMainController {
         FileReadWrite frw = new FileReadWrite();
         // //System.out.println("coba1: " + frw.tes().get().getReferenceId());
         List<LogAscend> list_logAscend = this.logAscendRepository
-                .findByIsNotGeneratedPPMERL(aesComponent.getBifastBic());
+                .findByIsNotGeneratedPPMERLOld();
 
         Optional<TerminalMerchant> list_terminal = this.terminalMerchantRepository
                 .findByNama("LOC");
@@ -1942,7 +2037,7 @@ public class APIMainController {
         if (ppmerl.contains("FAIL")) {
             response.put("rc", 400);
             response.put("status", "Gagal membuat file PPMERL");
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(response, HttpStatus.OK);
         }
 
         for (LogAscend logAscend : list_logAscend) {
@@ -1956,6 +2051,53 @@ public class APIMainController {
         // response.put("isi", list_logAscend);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
+
+    @GetMapping(value = "/generateFile/PAYEXT")
+    public ResponseEntity<Map<String, Object>> generateFilePAYEXT() {
+        LocalDateTime ldt = LocalDateTime.now();
+        // //System.out.println(ldt);
+        Map<String, Object> response = new HashMap<String, Object>();
+        FileReadWrite frw = new FileReadWrite();
+        // //System.out.println("coba1: " + frw.tes().get().getReferenceId());
+        String [] arrChres = this.terminalMerchantRepository.findByPayext(true);
+        List<String> listChres = this.channelResponseRepository.findAllPayextRef(Arrays.asList(arrChres));
+        // for (String string : listChres) {
+        //     System.out.println("=================\n"+string);
+        // }
+        List<LogAscend> list_logAscend = this.logAscendRepository
+                .findByRefIdList(listChres);
+
+        Optional<TerminalMerchant> list_terminal = this.terminalMerchantRepository
+                .findByNama("LOC");
+
+        // //System.out.println(list_terminal.get().getMerchantId());
+
+        if (list_logAscend.isEmpty()) {
+            response.put("rc", 204);
+            response.put("status", "Belum ada data terbaru, tidak membuat file baru");
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
+        String payext = frw.payext(list_logAscend, this.channelResponseRepository, this.planCodeRepository,
+                list_terminal.get().getMerchantId().toString(),terminalMerchantRepository);
+        // Update isGenerated
+        if (payext.contains("FAIL")) {
+            response.put("rc", 400);
+            response.put("status", "Gagal membuat file PPMERL");
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
+
+        for (LogAscend logAscend : list_logAscend) {
+            logAscend.setGeneratedAtPAYEXT(ldt);
+            logAscend.setIsGeneratedPAYEXT(true);
+            this.logAscendRepository.save(logAscend);
+        }
+
+        response.put("rc", 200);
+        response.put("status", payext);
+        // response.put("isi", list_logAscend);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
 
     @GetMapping(value = "/generateFile/MFTS")
     public ResponseEntity<Map<String, Object>> generateLOCTRF() {
@@ -1993,7 +2135,7 @@ public class APIMainController {
         if (loctrf.contains("FAIL")) {
             response.put("rc", 400);
             response.put("status", "Gagal membuat file LOCTRF");
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(response, HttpStatus.OK);
         }
 
         response.put("rc", 200);
@@ -2013,13 +2155,13 @@ public class APIMainController {
         if (input.getCardnum().isEmpty()) {
             response.put("rc", 400);
             response.put("detail", "cardnum tidak dimasukan");
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(response, HttpStatus.OK);
 
         }
         if (input.getChannel().isEmpty()) {
             response.put("rc", 400);
             response.put("detail", "channel tidak dimasukan");
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(response, HttpStatus.OK);
 
         }
         List<PlanCode> plancode = this.planCodeRepository.findPlanCodeByKodeTier(input.getChannel());
@@ -2285,7 +2427,7 @@ public class APIMainController {
                     mftsResponse.setRd_send("Connection Problem (?)");
                     mftsResponse.setIs_send(false);
                     this.mftsResponseRepository.save(mftsResponse);
-                    // return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+                    // return new ResponseEntity<>(response, HttpStatus.OK);
                     jsonObject = new JSONObject(response);
                 }
             }
@@ -2377,7 +2519,7 @@ public class APIMainController {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(response, HttpStatus.OK);
         }
         // for (Map.Entry<String, Object> entry : newNewResponse.entrySet()) {
         if (!response.get("rc").equals("00")) {
@@ -2545,7 +2687,7 @@ public class APIMainController {
                     req.getRemoteAddr(), "LOC Engine", "cekCustomer", "Cek Customer",
                     response.get("rc").toString(),
                     null, new JSONObject(response));
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(response, HttpStatus.OK);
         }
         List<CustomerParam> list = this.customerParamRepository.findByKodeChannel(input.get("kodeChannel").toString());
 
@@ -2558,7 +2700,7 @@ public class APIMainController {
                         req.getRemoteAddr(), "LOC Engine", "cekCustomer", "Cek Customer",
                         response.get("rc").toString(),
                         null, new JSONObject(response));
-                return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+                return new ResponseEntity<>(response, HttpStatus.OK);
             }
 
             // //System.out.println("nama param: " + customerParam.getNama_param() + "
@@ -2576,7 +2718,7 @@ public class APIMainController {
                         response.put("rc", 400);
                         response.put("rd", isiCustData.get("error"));
                         logService.info("/cekCustomer error: " + response.toString());
-                        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+                        return new ResponseEntity<>(response, HttpStatus.OK);
                     }
                     String[] arrDate = isiCustData.get("cust-maint-date").toString().split("-");
                     LocalDate ldt1 = LocalDate.now();
@@ -2811,6 +2953,8 @@ public class APIMainController {
         for (int i = 0; i < dataMaps.length(); i++) {
             Optional<LogAscend> transactionDatas = this.logAscendRepository
                     .findByRefId(dataMaps.getJSONObject(i).getString("refUser"));
+            Optional<ChannelResponse> chResDatas = this.channelResponseRepository
+                    .getByReferenceId(dataMaps.getJSONObject(i).getString("refUser"));
             FirebaseService firebaseService = new FirebaseService(channelResponseRepository, transactionDatas.get(),
                     firebaseConfigRepository, aesComponentNew, urlMFTS, aesComponent);
             // //System.out.println(dataMaps.getJSONObject(i).toString());
@@ -2823,6 +2967,10 @@ public class APIMainController {
                 } catch (Exception e) {
                     status_transfer = "null";
                 }
+                ChannelResponse chResData = chResDatas.get();
+                chResData.setStatusTransfer(status_transfer);
+                chResData.setDetailStatusTransfer(status_transfer_desc);
+
                 LogAscend tempTransactionData = transactionDatas.get();
                 tempTransactionData.setStatusTransfer(status_transfer);
                 tempTransactionData.setStatusTransferDesc(status_transfer_desc);
@@ -2837,6 +2985,7 @@ public class APIMainController {
                 // tempTransactionData.set
                 // tempTransactionData.set(dataMaps.getJSONObject(i).get("status"));
                 this.logAscendRepository.save(tempTransactionData);
+                this.channelResponseRepository.save(chResData);
                 response.put("rc", 200);
                 response.put("rd", "Berhasil Update Status");
                 response.put("filename", namafile);

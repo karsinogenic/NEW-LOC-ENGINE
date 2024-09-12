@@ -17,12 +17,20 @@ public interface LogAscendRepository extends JpaRepository<LogAscend, Long> {
     @Query("select l from LogAscend l where l.created_at >= :start and l.created_at < :end and l.isGenerated = null and l.bic = :bic")
     List<LogAscend> findByIsNotGeneratedToday(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end,
             @Param("bic") String bic);
+    
+
 
     @Query("select l from LogAscend l where l.isGenerated = null and l.rc='00' and l.bic = :bic ")
     List<LogAscend> findByIsNotGenerated(@Param("bic") String bic);
 
+    @Query("select l from LogAscend l where l.isGenerated = null and l.rc='00' and l.isvoided = false and l.statusTransfer='S'")
+    List<LogAscend> findByIsNotGeneratedOld();
+
     @Query("select l from LogAscend l where l.isGeneratedPPMERL = null and l.rc='00' and l.bic = :bic ")
     List<LogAscend> findByIsNotGeneratedPPMERL(@Param("bic") String bic);
+
+    @Query("select l from LogAscend l where l.isGeneratedPPMERL = null and l.rc='00' and l.isvoided = false and l.statusTransfer='S'")
+    List<LogAscend> findByIsNotGeneratedPPMERLOld();
 
     @Query("select l from LogAscend l where l.isGeneratedMFTS = null and l.rc='00' and l.bic = :bic")
     List<LogAscend> findLOCTRFData(@Param("bic") String bic);
@@ -32,6 +40,12 @@ public interface LogAscendRepository extends JpaRepository<LogAscend, Long> {
 
     @Query("select l from LogAscend l where l.referenceId = :ref_id")
     Optional<LogAscend> findByRefId(@Param("ref_id") String refId);
+    
+    @Query("select l from LogAscend l where l.referenceId IN :list and l.statusTransfer = 'S' and l.isGeneratedPAYEXT is null and l.bic <> 'MEGAIDJA' ")
+    List<LogAscend> findByRefIdList(@Param("list") List<String> list);
+
+    @Query("select l from LogAscend l where l.referenceId = :ref_id and l.rc is not null")
+    Optional<LogAscend> findByRefId2(@Param("ref_id") String refId);
 
     @Query("select l from LogAscend l where l.statusTransfer = :statusTransfer and l.auth_no is not null and l.isvoided = false")
     List<LogAscend> findByStatusTransferAndAuth_noNotNull(@Param("statusTransfer") String statusTransfer);
