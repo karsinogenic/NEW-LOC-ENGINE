@@ -40,10 +40,13 @@ import com.demo_loc_engine.demo.Repositories.TerminalMerchantRepository;
 @Service
 public class FileReadWrite {
 
-    public static int iter;
+    public static int iterSpdext;
     public static int iterPPMERL;
+    public static int iterPayext;
     public static int iterlocTRF;
-    public static String oldDate;
+    public static String oldDatePpmerl;
+    public static String oldDatePayext;
+    public static String oldDateSpdext;
 
     @Autowired
     private TerminalMerchantRepository terminalMerchantRepository;
@@ -97,9 +100,13 @@ public class FileReadWrite {
         String date_content = arr_date[0].substring(2) + arr_date[1] + arr_date[2];
 
         for (LogAscend logAscend : list) {
+            Optional<ChannelResponse> cr_mid = crr.getByReferenceId(logAscend.getReferenceId());
+            Optional<TerminalMerchant> tm_mid = tmr.findByNama(cr_mid.get().getTerminalMerchant());
+
             String cc_num = "0".repeat(19);
             String approval_code = "0".repeat(6);
-            String description = "MEGA LOAN ON CARD" + " ".repeat(23);
+            String description = "MEGA "+ tm_mid.get().getSpdextDesc();
+            description += " ".repeat(40-description.length());
             String dana = "0".repeat(12);
             String seq_num = "0".repeat(7);
 
@@ -139,8 +146,6 @@ public class FileReadWrite {
 
                 // mId
                 try {
-                    Optional<ChannelResponse> cr_mid = crr.getByReferenceId(logAscend.getReferenceId());
-                    Optional<TerminalMerchant> tm_mid = tmr.findByNama(cr_mid.get().getTerminalMerchant());
                     mId = tm_mid.get().getMerchantId();
                 } catch (Exception e) {
                     // TODO: handle exception
@@ -243,7 +248,7 @@ public class FileReadWrite {
                 // tenor
                 // System.out.println(cr_list.get().getPlanCode());
                 try {
-                    Integer plan_tenor = pcr.findByPlanCodePPMERL(cr_list.get().getPlanCode()).get(0).getTenor();
+                    Integer plan_tenor = pcr.findByPlanCodePPMERL(cr_list.get().getPlanCode(),cr_list.get().getKodeChannel()).get(0).getTenor();
                     tenor = tenor.substring(0, (tenor.length() - plan_tenor.toString().length()))
                             + plan_tenor.toString();
                 } catch (Exception e) {
@@ -274,6 +279,7 @@ public class FileReadWrite {
 
     }
 
+    @Deprecated
     public Boolean readFilePPMERL(String base64String, ChannelResponseRepository crr) {
 
         base64String = new String(Base64.getDecoder().decode(base64String));
@@ -365,17 +371,26 @@ public class FileReadWrite {
                 Optional<ChannelResponse> list_crr = crr.getByReferenceId(logAscend.getReferenceId());
                 // System.out.println("crr: " + list_crr.isPresent());
                 Optional<Channel> list_cr = cr.findByKodeChannel(list_crr.get().getKodeChannel());
-                content[0] = "OVB";
+                Optional<TerminalMerchant> tm = tmr.findByNama(list_crr.get().getTerminalMerchant());
+                content[0] = logAscend.getBic().equals("MEGAIDJA") ? "OVB":"SKN";
                 content[1] = "801";
                 content[2] = newdate;
                 content[4] = String.valueOf(list_crr.get().getAmount()) + "00";
                 content[5] = "LOAN ON CARD " + list_cr.get().getNama_channel();
                 content[6] = logAscend.getReferenceId();
-                content[15] = list_crr.get().getAccNumber();
-                content[16] = acc_debit;
+                content[7] = logAscend.getBic().equals("MEGAIDJA") ? "":"LOAN ON CARD";
+                content[8] = logAscend.getBic().equals("MEGAIDJA") ? "":logAscend.getBic();
+                content[9] = logAscend.getBic().equals("MEGAIDJA") ? "":tm.get().getAccName();
+                content[10] = logAscend.getBic().equals("MEGAIDJA") ? "":tm.get().getAccDebit();
+                content[13] = logAscend.getBic().equals("MEGAIDJA") ? "":"1";
+                content[14] = logAscend.getBic().equals("MEGAIDJA") ? "":"1";
+                content[15] = logAscend.getBic().equals("MEGAIDJA") ? list_crr.get().getAccNumber():"";
+                content[16] = logAscend.getBic().equals("MEGAIDJA") ? tm.get().getAccDebit():"";
                 // content[17] = list_crr.get().getAccName().length() > 20 ? list_crr.get().getAccName().substring(0, 20)
                 //         : list_crr.get().getAccName();
                 content[17] = "";
+                content[18] = logAscend.getBic().equals("MEGAIDJA") ? "":list_crr.get().getAccNumber();
+                content[19] = logAscend.getBic().equals("MEGAIDJA") ? "":list_crr.get().getAccName();
                 content[26] = logAscend.getReferenceId();
 
                 str_content += String.join(",", content) + "\n";
@@ -450,10 +465,10 @@ public class FileReadWrite {
     public String spdext(List<LogAscend> list, ChannelResponseRepository crr, String mId,
             TerminalMerchantRepository tmr) {
         LocalDate date = LocalDate.now();
-        if (date.toString().equals(oldDate) == false) {
-            iter = 0;
+        if (date.toString().equals(oldDateSpdext) == false) {
+            iterSpdext = 0;
         }
-        iter++;
+        iterSpdext++;
         String nama_folder = date.toString();
 
         String nama_path = "opt/SPDEXT/" + nama_folder;
@@ -462,8 +477,8 @@ public class FileReadWrite {
         if (newFile != null) {
             String namaFileString = newFile.getName();
             // String[] namaFileStringArr = namaFileString.split(".");
-            iter = Integer.parseInt(namaFileString.substring(9, 11));
-            iter++;
+            iterSpdext = Integer.parseInt(namaFileString.substring(9, 11));
+            iterSpdext++;
             // System.out.println(namaFileString.substring(9, 11));
             // System.out.println(namaFileStringArr[0]);
             // for (String string1 : namaFileStringArr) {
@@ -474,7 +489,7 @@ public class FileReadWrite {
         // find mID
         String[] arr_date = nama_folder.split("-");
 
-        String nama_file = "SPDEXTLOC" + ((iter < 10) ? ("0" + iter) : (iter)) + "." + arr_date[0].substring(2)
+        String nama_file = "SPDEXTLOCN" + ((iterSpdext < 10) ? ("0" + iterSpdext) : (iterSpdext)) + "." + arr_date[0].substring(2)
                 + arr_date[1] + arr_date[2];
         // System.out.println("nama_file = " + nama_file);
 
@@ -488,7 +503,7 @@ public class FileReadWrite {
                 return "FAIL";
             }
             // date = date.plusDays(1);
-            oldDate = date.toString();
+            oldDateSpdext = date.toString();
             return "Berhasil membuat file cek pada path:'" + nama_path + "'";
         } catch (IOException e) {
             // TODO Auto-generated catch block
@@ -500,7 +515,7 @@ public class FileReadWrite {
 
     public String ppmrl(List<LogAscend> list, ChannelResponseRepository crr, PlanCodeRepository pcr, String mId) {
         LocalDate date = LocalDate.now();
-        if (date.toString().equals(oldDate) == false) {
+        if (date.toString().equals(oldDatePpmerl) == false) {
             iterPPMERL = 0;
         }
         iterPPMERL++;
@@ -508,7 +523,7 @@ public class FileReadWrite {
         String nama_path = "opt/PPMERL/" + nama_folder;
         String[] arr_date = nama_folder.split("-");
 
-        String nama_file = "PPMERL" + ((iterPPMERL < 10) ? ("0" + iterPPMERL) : (iterPPMERL)) + "."
+        String nama_file = "PPMERLLOCN" + ((iterPPMERL < 10) ? ("0" + iterPPMERL) : (iterPPMERL)) + "."
                 + arr_date[0].substring(2)
                 + arr_date[1] + arr_date[2];
         // System.out.println("nama_file = " + nama_file);
@@ -523,7 +538,7 @@ public class FileReadWrite {
                 return "FAIL";
             }
             // date = date.plusDays(1);
-            oldDate = date.toString();
+            oldDatePpmerl = date.toString();
             return "Berhasil membuat file cek pada path:'" + nama_path + "'";
         } catch (IOException e) {
             // TODO Auto-generated catch block
@@ -560,7 +575,7 @@ public class FileReadWrite {
                 return "FAIL";
             }
             // date = date.plusDays(1);
-            oldDate = date.toString();
+            // oldDate = date.toString();
             MftsResponse mftsResponse = new MftsResponse();
             Optional<MftsResponse> optData = mftsResponseRepository
                     .findByNamaFile((nama_file.substring(0, nama_file.length() - 4)));
@@ -675,15 +690,15 @@ public class FileReadWrite {
 
     public String payext(List<LogAscend> list, ChannelResponseRepository crr, PlanCodeRepository pcr, String mId,TerminalMerchantRepository tmr) {
         LocalDate date = LocalDate.now();
-        if (date.toString().equals(oldDate) == false) {
-            iterPPMERL = 0;
+        if (date.toString().equals(oldDatePayext) == false) {
+            iterPayext = 0;
         }
-        iterPPMERL++;
+        iterPayext++;
         String nama_folder = date.toString();
         String nama_path = "opt/PAYEXT/" + nama_folder;
         String[] arr_date = nama_folder.split("-");
 
-        String nama_file = "PAYEXTLOC" + ((iterPPMERL < 10) ? ("0" + iterPPMERL) : (iterPPMERL)) + "."
+        String nama_file = "PAYEXTLOCN" + ((iterPayext < 10) ? ("0" + iterPayext) : (iterPayext)) + "."
                 + arr_date[0].substring(2)
                 + arr_date[1] + arr_date[2];
         // System.out.println("nama_file = " + nama_file);
@@ -698,7 +713,7 @@ public class FileReadWrite {
                 return "FAIL";
             }
             // date = date.plusDays(1);
-            oldDate = date.toString();
+            oldDatePayext = date.toString();
             return "Berhasil membuat file cek pada path:'" + nama_path + "'";
         } catch (IOException e) {
             // TODO Auto-generated catch block
@@ -752,7 +767,7 @@ public class FileReadWrite {
     public Integer findSequence(MftsResponseRepository mftsResponseRepository) {
         LocalDateTime ldt = LocalDateTime.of(LocalDate.now(), LocalTime.of(0, 0, 0));
         List<MftsResponse> listMfts = mftsResponseRepository.findSequenceData(ldt, ldt.plusDays(1));
-        Integer sequence = listMfts.size() + 1;
+        Integer sequence = listMfts.size() + 501;
         return sequence;
     }
 

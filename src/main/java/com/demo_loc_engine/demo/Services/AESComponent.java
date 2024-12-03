@@ -45,6 +45,18 @@ public class AESComponent {
     @Value("${bifast.url}")
     private String bifastURL;
 
+    @Value("${use.bifast}")
+    private Boolean useBifast;
+
+
+    public Boolean getUseBifast() {
+        return useBifast;
+    }
+
+    public void setUseBifast(Boolean useBifast) {
+        this.useBifast = useBifast;
+    }
+
     public String getBifastURL() {
         return bifastURL;
     }

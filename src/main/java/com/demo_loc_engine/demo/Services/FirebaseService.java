@@ -45,7 +45,7 @@ public class FirebaseService {
 
     public Boolean sendToFireBase(String status) {
         JSONObject fireObject = this.createJsonFirebase(crr, logAscend, status);
-        System.out.println("fire_object: " + fireObject.toString());
+        // System.out.println("fire_object: " + fireObject.toString());
         String AESstring = this.makeAES(fireObject, aesComponent);
         Boolean sendJson = this.sendJson(AESstring, aesComponent);
         return sendJson;
@@ -87,7 +87,7 @@ public class FirebaseService {
         // System.out.println("main json: " + main.toString());
         try {
             hasil_req = httpRequest.postRequest("http://" + url, main.toString());
-            System.out.println(hasil_req);
+            // System.out.println(hasil_req);
         } catch (Exception e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -101,7 +101,7 @@ public class FirebaseService {
                     dataResponse = aesEncryptDecrypt.decrypt(json_req.get("data").toString(),
                             aesComponent.getAesKey(), aesComponent.getAesIV());
                     JSONObject data_req = new JSONObject(dataResponse);
-                    System.out.println(data_req.toString());
+                    // System.out.println(data_req.toString());
                     if (data_req.getString("RC").equals("00")) {
                         channelResponse.setToFirebase(true);
                     } else {

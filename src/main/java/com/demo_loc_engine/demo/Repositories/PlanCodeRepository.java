@@ -25,6 +25,9 @@ public interface PlanCodeRepository extends JpaRepository<PlanCode, Long> {
     @Query("Select e from PlanCode e where e.plan_code = :plan_code")
     List<PlanCode> findByPlanCodePPMERL(String plan_code);
 
+    @Query("Select e from PlanCode e where e.plan_code = :plan_code and e.kode_tier like %:kodetier%")
+    List<PlanCode> findByPlanCodePPMERL(String plan_code,String kodetier);
+
     @Query("Select e.plan_code from PlanCode e")
     List<String> allPlanCode();
 

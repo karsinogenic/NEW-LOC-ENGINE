@@ -28,11 +28,33 @@ public class TerminalMerchant {
     @Column(name = "acc_debit")
     private String accDebit;
 
+    @Column(name = "acc_name")
+    private String accName;
+
     @Column(name = "payext", nullable = false,columnDefinition = "tinyint(1) default 0")
     private Boolean payext;
 
     @Column(name = "payment_fee",nullable = false,columnDefinition = "BIGINT(20) default 0")
     private Long paymentFee;
+
+    @Column(name = "spdext_desc")
+    private String spdextDesc;
+
+    public String getSpdextDesc() {
+        return spdextDesc;
+    }
+
+    public void setSpdextDesc(String spdextDesc) {
+        this.spdextDesc = spdextDesc;
+    }
+
+    public String getAccName() {
+        return accName;
+    }
+
+    public void setAccName(String accName) {
+        this.accName = accName;
+    }
 
     @Column(name = "payment_fee_desc",length = 40)
     private String paymentFeeDesc;

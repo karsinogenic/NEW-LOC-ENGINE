@@ -183,7 +183,7 @@ public class APIMainController {
 
     private static ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
     private static Validator validator = factory.getValidator();
-    public static String ipLoc = "10.14.21.65:8084";
+    // public static String ipLoc = "10.14.21.65:8084";
 
     @Autowired
     public LogService logService;
@@ -263,9 +263,20 @@ public class APIMainController {
             ls.get(i).setIsvoided(rc_list.get(i).equals("00") ? true : false);
         }
         this.logAscendRepository.saveAll(ls);
-        hasil.put("rc", "00");
-        hasil.put("rd", "OK");
-        hasil.put("data", joinhasil.toList());
+
+        if(refid!=null){
+            if(joinhasil.toList().isEmpty()){
+                hasil.put("rc", "99");
+                hasil.put("rd", "Fail To Void");
+            }else{
+                hasil.put("rc", "00");
+                hasil.put("rd", "OK");
+            }
+        }else{
+            hasil.put("rc", "00");
+            hasil.put("rd", "OK");
+            hasil.put("data", joinhasil.toList());
+        }
         logService.info("Finished void batch with total of " + la.size() + (la.size() > 1 ? " datas"
                 : " data") + joinhasil.toList() + "\n" + "=".repeat(150));
 
@@ -1117,16 +1128,45 @@ public class APIMainController {
     // return new ResponseEntity<Map>(hasil, null, 200);
     // }
 
+    public String sknCheck(ChannelResponseInput input){
+        if(input.getAccName()==null && !input.getBic().equals("MEGAIDJA")){
+            return "accName null";
+        }else if(input.getAccName().isBlank() && !input.getBic().equals("MEGAIDJA")){
+            return "accName blank";
+        }else if(input.getAccNumber()==null  && !input.getBic().equals("MEGAIDJA")){
+            return "accNumber null";
+        }else if(input.getAccNumber().isBlank() && !input.getBic().equals("MEGAIDJA")){
+            return "accNumber blank";
+        }else{
+            return "OK";
+        }
+
+    }
+
     @PostMapping(value = "/getChannelResponse")
     public ResponseEntity<Map<String, Object>> getChannelResponse(@Valid @RequestBody ChannelResponseInput inputnew,
             HttpServletRequest req)
             throws Exception {
         Map<String, Object> response = new HashMap();
+        response.put("rc_trf", null);
+        response.put("rd_trf", null);
+        response.put("data_trf", null);
+        if(inputnew.getBic() == null){
+            inputnew.setBic("MEGAIDJA");
+        }
+
         logService.info("========================CH Response========================");
 
         logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Request", req.getLocalAddr(),
                 req.getRemoteAddr(), "LOC Engine", "getChannelResponse", "Grab Ascend", null,
                 null, new JSONObject(inputnew));
+        String skncek = sknCheck(inputnew);
+        if(!skncek.equals("OK")){
+            response.put("rc", 400);
+                response.put("rd", "error");
+                response.put("info", skncek);
+                return new ResponseEntity<>(new TreeMap<>(response), HttpStatus.OK);
+        }
 
         ObjectMapper mapper = new ObjectMapper();
 
@@ -1287,7 +1327,7 @@ public class APIMainController {
         System.out.println("curr res: " + response.toString());
 
         // do BIFAST
-        if (!responseChannel.getBic().equals(aesComponent.getBifastBic())) {
+        if (!responseChannel.getBic().equals(aesComponent.getBifastBic())&&aesComponent.getUseBifast()) {
             JSONObject outbifast = this.doBiFast(responseChannel);
             System.out.println(outbifast);
             // response.put("data", outbifast.toMap());
@@ -2109,6 +2149,10 @@ public class APIMainController {
         Map<String, Object> response = new HashMap<String, Object>();
 
         List<LogAscend> list_logAscend = this.logAscendRepository.findLOCTRFData(aesComponent.getBifastBic());
+        if(!aesComponent.getUseBifast()){
+            // System.out.println("findall");
+            list_logAscend = this.logAscendRepository.findLOCTRFDataAll();
+        }
 
         Optional<TerminalMerchant> list_terminal = this.terminalMerchantRepository.findByNama("LOC");
 
@@ -2149,6 +2193,9 @@ public class APIMainController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    @Value("${ascend.url}")
+    private String ascendurl;
+
     @PostMapping(value = "/cicilanChannel")
     public ResponseEntity<Map<String, Object>> cariCicilan(@RequestBody InputAsccend input) {
         Map<String, Object> response = new HashMap<String, Object>();
@@ -2176,14 +2223,14 @@ public class APIMainController {
         newplancode += "]";
 
         // String uri = "http://127.0.0.1:8082/api/SCNMORDP";
-        String uri = "http://" + ipLoc + "/asc/api/SCNMORDP";
+        String uri = ascendurl+"/SCNMORDP";
         String data = "{\"cardnum\":\"" + input.getCardnum() + "\",\"plancode\":" + newplancode + "}";
-        // System.out.println(uri);
-        // System.out.println(data);
+        System.out.print("uri: "+uri+" || ");
+        System.out.println(data);
         try {
             HTTPRequest httpRequest = new HTTPRequest(aesComponent);
             String responseHasil = httpRequest.postRequestBasicAuth(uri, data, "7777777", "7777777");
-            // System.out.println("response hasil: " + responseHasil);
+            System.out.println("response hasil: " + responseHasil);
 
             ObjectMapper mappers = new ObjectMapper();
             ModelMapper modelMapper = new ModelMapper();
@@ -2239,12 +2286,13 @@ public class APIMainController {
             response.put("data", listAsccendResponses);
             // response.put("data1", jsonResponse);
         } catch (Exception e) {
-            // System.out.println(e.getMessage());
+            System.out.println(e.getMessage());
         }
 
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    
     @GetMapping("/cobaSequece")
     public String cobaSequence() {
         FileReadWrite frw = new FileReadWrite();
@@ -2252,13 +2300,6 @@ public class APIMainController {
         return hasil.toString();
     }
 
-    @GetMapping("/testRead")
-    public String testRead() {
-        FileReadWrite fileReadWrite = new FileReadWrite();
-        String base64 = "RmxhZzosTiwKQWNjb3VudCBEZWJpdDosMTAyMTAwMDMwMDAwNiwKVG90YWwgdHJhbnNhY3Rpb246LDEsClRvdGFsIHRyYW5zYWN0aW9uIGFtb3VudDosMTAwMDAwMCwKVG90YWwgY2hhcmdlOiwwLApUcmFuc2FjdGlvbiBkYXRlOiwwMzA1MjMsClVzZXIgSUQ6LCwKLCwKU2VydmljZSBjb2RlLFNvdXJjZSBCcmFuY2gsRGF0ZSBERE1NWVksUmVmZiBubyxBbW91bnQsUmVtYXJrIExpbmUgMyxSZW1hcmsgTGluZSA0LFJFTUFSSyBUUlgsQklDIEJBTksgUEVORVJJTUEsTkFNQSBQRU5HSVJJTSxSRUtFTklORyBQRU5HSVJJTSxDSEFSR0UgMSxDSEFSR0UgMixKZW5pcyBuYXNhYmFoIHBlbmVyaW1hLFN0YXR1cyBwZW5kdWR1ayBwZW5lcmltYSxBY2NvdW50IENyZWRpdCxBY2NvdW50IERlYml0LE5BTUEgUEVORVJJTUEgT1ZCLFJFS0VOSU5HIFBFTkVSSU1BIFNLTixOQU1BIFBFTkVSSU1BIFNLTixSRUtFTklORyBQRU5FUklNQSAgUlRHLE5BTUEgUEVORVJJTUEgIFJURyxBbEFNQVQgUEVORVJJTUEsQWxBTUFUIEtPVEEgUEVORVJJTUEsS09ERSBDQUJBTkcgQkFOSyBQRU5FUklNQSxOQU1BIFBFTkVSSU1BIEVXQUxMRVQsUmVmZiBVc2VyLFN0YXR1cyxEZXNjU3RhdHVzLENPTVBBTlkgSURFTlRJRklFUixBZGRpdGlvbmFsMSxBZGRpdGlvbmFsMixBZGRpdGlvbmFsMyxDdXJyZW5jeURlYmV0LEN1cnJlbmN5Q3JlZGl0LFJhdGVEZWJpdCxSYXRlQ3JlZGl0LEFtb3VudENyZWRpdApPVkIsMDAxLDAzMDUyMyxMT0MyMDIzMDUwMzAwMDEwMDAwMSwxMDAwMDAwLExPQU4gT04gQ0FSRCBNLVNNSUxFLGxwbTY1MDY4MzI3NiwsLCwsLCwsLDExMTExMTE0MTExMSwxMDIxMDAwMzAwMDA2LE5hdWZhbFRlc3QsLCwsLCwsLCxscG02NTA2ODMyNzYsRixBY2NvdW50IERlYml0L0NyZWRpdCBOb3QgRm91bmQsbnVsbCwsLCwsLCwsLCwK";
-        fileReadWrite.readFilePPMERL(base64, channelResponseRepository);
-        return null;
-    }
 
     @GetMapping("/createAES")
     public String generateBodyAES(String csv) {
