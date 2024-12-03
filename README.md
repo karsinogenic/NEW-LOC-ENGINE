@@ -1,5 +1,5 @@
 V0.0
--Default
+- Default
 V1.0
 - add CC_VOID_SALE on aes_component
 - add ASC_void on api_config
