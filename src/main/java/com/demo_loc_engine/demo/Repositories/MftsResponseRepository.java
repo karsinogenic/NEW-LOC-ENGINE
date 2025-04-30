@@ -27,4 +27,15 @@ public interface MftsResponseRepository extends JpaRepository<MftsResponse, Long
     @Query("select m from MftsResponse m where m.date_create Between :start and :end ")
     List<MftsResponse> findSequenceData(@Param(value = "start") LocalDateTime start_date,
             @Param(value = "end") LocalDateTime end_date);
+
+    @Query("select m from MftsResponse m where SUBSTR(m.nama_file,LENGTH(m.nama_file)-3,1)='0' and m.date_create Between :start and :end")
+    List<MftsResponse> findSequenceDataOVB(@Param(value = "start") LocalDateTime start_date,
+            @Param(value = "end") LocalDateTime end_date);
+    @Query("select m from MftsResponse m where SUBSTR(m.nama_file,LENGTH(m.nama_file)-3,1)='1' and m.date_create Between :start and :end")
+    List<MftsResponse> findSequenceDataSKN(@Param(value = "start") LocalDateTime start_date,
+            @Param(value = "end") LocalDateTime end_date);
+
+    @Query(nativeQuery = true,value = "select * from mfts_response m where CAST(RIGHT(m.nama_file,4) as UNSIGNED) BETWEEN :seq_start and :seq_end and m.date_create Between :start and :end")
+    List<MftsResponse> findSequenceDataNew(@Param(value = "start") LocalDateTime start_date,
+            @Param(value = "end") LocalDateTime end_date,@Param(value = "seq_end") Integer seq_end,@Param(value = "seq_start") Integer seq_start);
 }

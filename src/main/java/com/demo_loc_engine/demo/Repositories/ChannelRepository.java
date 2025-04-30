@@ -16,4 +16,7 @@ public interface ChannelRepository extends JpaRepository<Channel, Long> {
     @Query("select c from Channel c where c.kode_channel=:kode")
     Optional<Channel> findByKodeChannel(@Param("kode") String kode);
 
+    @Query("select c from Channel c where c.kode_channel=:kode and c.ovbStart is not null and c.ovbEnd is not null and c.sknStart is not null and c.sknEnd is not null")
+    Optional<Channel> findByKodeChannelOVBSKN(@Param("kode") String kode);
+
 }

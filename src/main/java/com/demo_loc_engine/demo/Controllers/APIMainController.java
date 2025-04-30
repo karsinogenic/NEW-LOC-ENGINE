@@ -74,6 +74,7 @@ import com.demo_loc_engine.demo.Models.Channel;
 import com.demo_loc_engine.demo.Models.ChannelResponse;
 import com.demo_loc_engine.demo.Models.ChannelResponseInput;
 import com.demo_loc_engine.demo.Models.CustomerParam;
+import com.demo_loc_engine.demo.Models.HolidayDate;
 import com.demo_loc_engine.demo.Models.IncomingRequestBiFast;
 import com.demo_loc_engine.demo.Models.Kriteria;
 import com.demo_loc_engine.demo.Models.LogAscend;
@@ -91,6 +92,7 @@ import com.demo_loc_engine.demo.Repositories.ChannelRepository;
 import com.demo_loc_engine.demo.Repositories.ChannelResponseRepository;
 import com.demo_loc_engine.demo.Repositories.CustomerParamRepository;
 import com.demo_loc_engine.demo.Repositories.FirebaseConfigRepository;
+import com.demo_loc_engine.demo.Repositories.HolidayRepository;
 import com.demo_loc_engine.demo.Repositories.AESComponentRepository;
 import com.demo_loc_engine.demo.Repositories.APIConfigRepository;
 import com.demo_loc_engine.demo.Repositories.KriteriaRepository;
@@ -177,6 +179,9 @@ public class APIMainController {
 
     @Autowired
     public AESComponent aesComponent;
+
+    @Autowired
+    public HolidayRepository holidayRepository;
 
     // @Autowired
     // public TestAscoreRepository testAscoreRepository;
@@ -1131,10 +1136,10 @@ public class APIMainController {
     public String sknCheck(ChannelResponseInput input){
         if(input.getAccName()==null && !input.getBic().equals("MEGAIDJA")){
             return "accName null";
-        }else if(input.getAccName().isBlank() && !input.getBic().equals("MEGAIDJA")){
-            return "accName blank";
         }else if(input.getAccNumber()==null  && !input.getBic().equals("MEGAIDJA")){
             return "accNumber null";
+        }else if(input.getAccName().isBlank() && !input.getBic().equals("MEGAIDJA")){
+            return "accName blank";
         }else if(input.getAccNumber().isBlank() && !input.getBic().equals("MEGAIDJA")){
             return "accNumber blank";
         }else{
@@ -1314,7 +1319,7 @@ public class APIMainController {
             response.put("rc", 400);
             response.put("rc_grab", "ASC-99");
             response.put("rd_grab", "Gagal ke Ascend");
-            // response.put("info", e.ge());
+            response.put("info", e);
             // e.printStackTrace();
             logService.info2(null, String.valueOf(Instant.now().toEpochMilli()), "Response", req.getLocalAddr(),
                     req.getRemoteAddr(), "LOC Engine", "getChannelResponse", "Grab Ascend",
@@ -1536,6 +1541,7 @@ public class APIMainController {
     // return jsonObject.toString();
     // }
 
+    @Deprecated
     @GetMapping(value = "/testAscend")
     public ResponseEntity<Map<String, Object>> testAscend() {
         Map<String, Object> newMap = new HashMap<String, Object>();
@@ -2139,8 +2145,8 @@ public class APIMainController {
     }
 
 
-    @GetMapping(value = "/generateFile/MFTS")
-    public ResponseEntity<Map<String, Object>> generateLOCTRF() {
+    @GetMapping(value = "/generateFile/MFTS/OVB")
+    public ResponseEntity<Map<String, Object>> generateLOCTRF() throws JsonProcessingException {
         LocalDateTime ldt = LocalDateTime.now();
         LocalDate ld = LocalDate.now();
         String ldtnew = (ldt.getYear() + "-" + (String.valueOf(ldt.getMonthValue()).length() == 1
@@ -2148,21 +2154,23 @@ public class APIMainController {
                 : String.valueOf(ldt.getMonthValue())) + "-" + ldt.getDayOfMonth());
         Map<String, Object> response = new HashMap<String, Object>();
 
-        List<LogAscend> list_logAscend = this.logAscendRepository.findLOCTRFData(aesComponent.getBifastBic());
-        if(!aesComponent.getUseBifast()){
-            // System.out.println("findall");
-            list_logAscend = this.logAscendRepository.findLOCTRFDataAll();
-        }
+        List<LogAscend> list_logAscend = this.logAscendRepository.findLOCTRFDataAllOVB(); 
+        // this.logAscendRepository.findLOCTRFData(aesComponent.getBifastBic());
+        // if(!aesComponent.getUseBifast()){
+        //     // System.out.println("findall");
+        //     list_logAscend = 
+        // }
 
         Optional<TerminalMerchant> list_terminal = this.terminalMerchantRepository.findByNama("LOC");
 
         FileReadWrite frw = new FileReadWrite();
         // // //System.out.println(list_terminal.get().getMerchantId());
-
+        List<String> ids = new ArrayList<>();
         for (LogAscend logAscend : list_logAscend) {
-            logAscend.setGeneratedAtMFTS(LocalDateTime.now());
-            logAscend.setIsGeneratedMFTS(true);
-            this.logAscendRepository.save(logAscend);
+            ids.add(logAscend.getReferenceId());
+            // logAscend.setGeneratedAtMFTS(LocalDateTime.now());
+            // logAscend.setIsGeneratedMFTS(true);
+            // this.logAscendRepository.save(logAscend);
 
         }
 
@@ -2171,19 +2179,59 @@ public class APIMainController {
             response.put("status", "Belum ada data terbaru, tidak membuat file baru");
             return new ResponseEntity<>(response, HttpStatus.OK);
         }
-        String loctrf = fileReadWriteService.locTRF(list_logAscend, this.channelResponseRepository,
-                this.channelRepository,
-                list_terminal.get().getMerchantId().toString(), this.terminalMerchantRepository,
-                this.mftsResponseRepository);
-        // Update isGenerated
-        if (loctrf.contains("FAIL")) {
-            response.put("rc", 400);
-            response.put("status", "Gagal membuat file LOCTRF");
-            return new ResponseEntity<>(response, HttpStatus.OK);
-        }
+        List<Map> list_response = new ArrayList<>();
+        List<String> chs = this.channelResponseRepository.findAllDistinctKodeChannelMFTS(ids);
+        System.out.println(new ObjectMapper().writeValueAsString(chs));
+        Boolean flag_response = true;
+        for (String ch_code : chs) {
+            Map temp_res = new HashMap<>();
+            Optional<Channel> channel = this.channelRepository.findByKodeChannelOVBSKN(ch_code);
+            if(channel.isEmpty()){
+                temp_res.put("rc", 400);
+                temp_res.put("status", "Gagal membuat file LOCTRF Untuk channel "+null);
+            }else if(channel.get() == null && channel.get() == null){
+                temp_res.put("rc", 400);
+                temp_res.put("status", "Gagal membuat file LOCTRF Untuk channel "+ch_code);
+            }else{
+                
+                List<String> new_ids = this.channelResponseRepository.findAllReferenceIDMFTS(ids, ch_code);
+                System.out.println(new ObjectMapper().writeValueAsString("ids: "+new_ids));
+                List<LogAscend> new_LogAscends = this.logAscendRepository.findByListRefId(new_ids);
+                System.out.println(new ObjectMapper().writeValueAsString("logasc: "+new_LogAscends));
+                String loctrf = fileReadWriteService.locTRF(new_LogAscends, this.channelResponseRepository,
+                        this.channelRepository,
+                        list_terminal.get().getMerchantId().toString(), this.terminalMerchantRepository,
+                        this.mftsResponseRepository,channel.get().getOvbStart(),channel.get().getOvbEnd());
+    
+                if (loctrf.contains("FAIL")) {
+                    temp_res.put("rc", 400);
+                    temp_res.put("status", "Gagal membuat file LOCTRF Untuk channel "+ch_code);
+                    list_response.add(temp_res);
+                    flag_response = false || flag_response;
+                    // return new ResponseEntity<>(response, HttpStatus.OK);
+                }else{
+                    temp_res.put("rc", 200);
+                    temp_res.put("status", loctrf);
+                    list_response.add(temp_res);
+                    flag_response = true || flag_response;
+                    for (LogAscend logAscend : new_LogAscends) {
+                        // ids.add(logAscend.getReferenceId());
+                        logAscend.setGeneratedAtMFTS(LocalDateTime.now());
+                        logAscend.setIsGeneratedMFTS(true);
+                        this.logAscendRepository.save(logAscend);
+            
+                    }
+                }   
 
-        response.put("rc", 200);
-        response.put("status", loctrf);
+            }
+           
+            
+        }
+        // Update isGenerated
+        
+        response.put("rc", flag_response ? 200:400);
+        response.put("rd", flag_response ? "OK":"ERROR");
+        response.put("data", list_response);
         // response.put("isi", list_logAscend);
         // for (LogAscend logAscend : list_logAscend) {
         // logAscend.setGeneratedAtMFTS(LocalDateTime.now());
@@ -2192,6 +2240,107 @@ public class APIMainController {
 
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
+
+    @GetMapping(value = "/generateFile/MFTS/SKN")
+    public ResponseEntity<Map<String, Object>> generateLOCTRFSKN() throws JsonProcessingException {
+        LocalDateTime ldt = LocalDateTime.now();
+        LocalDate ld = LocalDate.now();
+        Map<String, Object> response = new HashMap<String, Object>();
+        // System.out.println(ld);
+        Optional<HolidayDate> holiday = this.holidayRepository.findByHolidayDateActive(ld);
+        // System.out.println(holiday);
+        if(holiday.isPresent()){
+            response.put("rc", "LOC-25");
+            response.put("rd", "It's Holiday,Happy Holiday :)");
+            response.put("data", holiday);
+            return new ResponseEntity<>(response,null,200);
+        }
+        String ldtnew = (ldt.getYear() + "-" + (String.valueOf(ldt.getMonthValue()).length() == 1
+                ? ("0" + String.valueOf(ldt.getMonthValue()))
+                : String.valueOf(ldt.getMonthValue())) + "-" + ldt.getDayOfMonth());
+
+        List<LogAscend> list_logAscend = this.logAscendRepository.findLOCTRFData(aesComponent.getBifastBic());
+        if(!aesComponent.getUseBifast()){
+            // System.out.println("findall");
+            list_logAscend = this.logAscendRepository.findLOCTRFDataAllSKN();
+        }else{
+            response.put("rc", "LOC-77");
+            response.put("rd", "Current Setting is Using BIFAST");
+            // response.put("data", holiday);
+            return new ResponseEntity<>(response,null,200);
+        }
+
+        Optional<TerminalMerchant> list_terminal = this.terminalMerchantRepository.findByNama("LOC");
+
+        FileReadWrite frw = new FileReadWrite();
+        // // //System.out.println(list_terminal.get().getMerchantId());
+        List<String> ids = new ArrayList<>();
+        
+        if (list_logAscend.isEmpty()) {
+            response.put("rc", 204);
+            response.put("status", "Belum ada data terbaru, tidak membuat file baru");
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
+
+        for (LogAscend logAscend : list_logAscend) {
+            ids.add(logAscend.getReferenceId());
+            System.out.println(logAscend.getReferenceId());
+            // logAscend.setGeneratedAtMFTS(LocalDateTime.now());
+            // logAscend.setIsGeneratedMFTS(true);
+            // this.logAscendRepository.save(logAscend);
+
+        }
+
+        List<Map> list_response = new ArrayList<>();
+        List<String> chs = this.channelResponseRepository.findAllDistinctKodeChannelMFTS(ids);
+        System.out.println(new ObjectMapper().writeValueAsString(chs));
+        
+        Boolean flag_response = true;
+        for (String ch_code : chs) {
+            Map temp_res = new HashMap<>();
+            Optional<Channel> channel = this.channelRepository.findByKodeChannelOVBSKN(ch_code);
+            // System.out.println(new ObjectMapper().writeValueAsString(channel.get()));
+            List<String> new_ids = this.channelResponseRepository.findAllReferenceIDMFTS(ids, channel.get().getKode_channel());
+            System.out.println(new ObjectMapper().writeValueAsString("ids: "+new_ids));
+
+            List<LogAscend> new_LogAscends = this.logAscendRepository.findByListRefId(new_ids);
+            String loctrf = fileReadWriteService.locTRFSKN(new_LogAscends, this.channelResponseRepository,
+                    this.channelRepository,
+                    list_terminal.get().getMerchantId().toString(), this.terminalMerchantRepository,
+                    this.mftsResponseRepository,channel.get().getSknStart(),channel.get().getSknEnd());
+
+        if (loctrf.contains("FAIL")) {
+            temp_res.put("rc", 400);
+            temp_res.put("status", "Gagal membuat file LOCTRF");
+            list_response.add(temp_res);
+            flag_response = false || flag_response;
+            // return new ResponseEntity<>(response, HttpStatus.OK);
+        }else{
+            temp_res.put("rc", 200);
+            temp_res.put("status", loctrf);
+            list_response.add(temp_res);
+            flag_response = true || flag_response;
+            for (LogAscend logAscend : new_LogAscends) {
+                // System.out.println(logAscend.getReferenceId());
+                logAscend.setGeneratedAtMFTS(LocalDateTime.now());
+                logAscend.setIsGeneratedMFTS(true);
+                
+                this.logAscendRepository.save(logAscend);
+            }
+        }   
+
+            
+        }
+        // Update isGenerated
+        
+        response.put("rc", flag_response ? 200:400);
+        response.put("rd", flag_response ? "OK":"ERROR");
+        response.put("data", list_response);
+        // response.p
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
 
     @Value("${ascend.url}")
     private String ascendurl;
@@ -2292,13 +2441,6 @@ public class APIMainController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    
-    @GetMapping("/cobaSequece")
-    public String cobaSequence() {
-        FileReadWrite frw = new FileReadWrite();
-        Integer hasil = frw.findSequence(mftsResponseRepository);
-        return hasil.toString();
-    }
 
 
     @GetMapping("/createAES")
@@ -2406,6 +2548,7 @@ public class APIMainController {
                             jsonInput.toString());
                     ObjectMapper mapper = new ObjectMapper();
                     Map<String, Object> newResponse = mapper.readValue(httpRequestResponseOld, Map.class);
+                    // System.out.println(mapper.writeValueAsString(newResponse));
                     String dataResponse = "";
                     MftsResponse mftsResponse = new MftsResponse();
                     Optional<MftsResponse> isi = this.mftsResponseRepository.findByNamaFile(csvFile);
@@ -2530,6 +2673,7 @@ public class APIMainController {
         String decodeDataMFTS = "";
         try {
             Map<String, Object> mapBody = mapper.readValue(bodyResponseSent, Map.class);
+            System.out.println(mapper.writeValueAsString(mapBody));
             if (mapBody.get("data") != null) {
                 // if (mapBody.get("data").toString().length() > 0) {
                 dataMFTS = mapBody.get("data").toString();
@@ -2548,7 +2692,7 @@ public class APIMainController {
             // }
         } catch (Exception e) {
             // TODO Auto-generated catch block
-            // e.printStackTrace();
+            e.printStackTrace();
         }
 
         try {
@@ -2974,8 +3118,9 @@ public class APIMainController {
 
         for (int i = 9; i < hasil.size(); i++) {
             JSONObject tempData = new JSONObject();
+            String refuser = hasil.get(i).split(",")[26].isBlank() ? hasil.get(i).split(",")[6]:hasil.get(i).split(",")[26];
             tempData.put(
-                    "refUser", hasil.get(i).split(",")[26]);
+                    "refUser", refuser);
             tempData.put(
                     "status", hasil.get(i).split(",")[27]);
             tempData.put(

@@ -39,7 +39,7 @@ public class AESComponent {
     @Value("${pefindo.path}")
     private String pefindoPath;
 
-    @Value("${bifast.bic}")
+    @Value("${default.bic}")
     private String bifastBic;
 
     @Value("${bifast.url}")

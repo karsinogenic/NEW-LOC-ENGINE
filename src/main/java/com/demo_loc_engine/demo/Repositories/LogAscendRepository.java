@@ -37,6 +37,12 @@ public interface LogAscendRepository extends JpaRepository<LogAscend, Long> {
 
     @Query("select l from LogAscend l where l.isGeneratedMFTS = null and l.rc='00' and l.statusTransfer=null")
     List<LogAscend> findLOCTRFDataAll();
+    
+    @Query("select l from LogAscend l where l.isGeneratedMFTS = null and l.rc='00' and l.statusTransfer=null and l.bic = 'MEGAIDJA'")
+    List<LogAscend> findLOCTRFDataAllOVB();
+
+    @Query("select l from LogAscend l where l.isGeneratedMFTS = null and l.rc='00' and l.statusTransfer=null and l.bic <> 'MEGAIDJA'")
+    List<LogAscend> findLOCTRFDataAllSKN();
 
     @Query("select l from LogAscend l where l.auth_no = :auth_no")
     Optional<LogAscend> findByAuthCode(@Param("auth_no") String authNumber);

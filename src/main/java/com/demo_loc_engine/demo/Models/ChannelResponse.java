@@ -13,7 +13,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 @Entity
 @Table(name = "channel_response")
@@ -74,7 +76,8 @@ public class ChannelResponse {
     @Column(name = "detail_status_transfer", columnDefinition = "text")
     private String detailStatusTransfer;
 
-    @Column(name = "bic")
+    // @Size(max = 8)
+    @Column(name = "bic",length = 8)
     private String bic;
 
     @CreatedDate

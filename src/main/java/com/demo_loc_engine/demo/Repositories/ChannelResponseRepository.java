@@ -21,4 +21,10 @@ public interface ChannelResponseRepository extends JpaRepository<ChannelResponse
 
     @Query("select cr.referenceId from ChannelResponse cr where cr.statusTransfer = 'S' and cr.terminalMerchant IN :list and cr.bic <> 'MEGAIDJA' ")
     List<String> findAllPayextRef(@Param("list") List<String> tmList);
+    
+    @Query("select DISTINCT(cr.kodeChannel) from ChannelResponse cr where cr.referenceId in ?1")
+    List<String> findAllDistinctKodeChannelMFTS(List<String> refid);
+
+    @Query("select cr.referenceId from ChannelResponse cr where cr.referenceId in ?1 and cr.kodeChannel = ?2")
+    List<String> findAllReferenceIDMFTS(List<String> refid,String kodech);
 }

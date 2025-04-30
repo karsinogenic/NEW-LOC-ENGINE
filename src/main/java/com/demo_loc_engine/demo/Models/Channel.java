@@ -33,7 +33,46 @@ public class Channel {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "ovb_start")
+    private Integer ovbStart;
+    @Column(name = "ovb_end")
+    private Integer ovbEnd;
+    @Column(name = "skn_start")
+    private Integer sknStart;
+    @Column(name = "skn_end")
+    private Integer sknEnd;
 
+    public Integer getOvbStart() {
+        return ovbStart;
+    }
+
+    public void setOvbStart(Integer ovbStart) {
+        this.ovbStart = ovbStart;
+    }
+
+    public Integer getOvbEnd() {
+        return ovbEnd;
+    }
+
+    public void setOvbEnd(Integer ovbEnd) {
+        this.ovbEnd = ovbEnd;
+    }
+
+    public Integer getSknStart() {
+        return sknStart;
+    }
+
+    public void setSknStart(Integer sknStart) {
+        this.sknStart = sknStart;
+    }
+
+    public Integer getSknEnd() {
+        return sknEnd;
+    }
+
+    public void setSknEnd(Integer sknEnd) {
+        this.sknEnd = sknEnd;
+    }
 
     public Long getId() {
         return id;

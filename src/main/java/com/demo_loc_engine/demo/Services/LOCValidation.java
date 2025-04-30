@@ -19,12 +19,16 @@ public class LOCValidation extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
             HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         Map<String, String> errors = new HashMap<>();
+        Map response = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
-
+            
             String fieldName = ((FieldError) error).getField();
             String message = error.getDefaultMessage();
             errors.put(fieldName, message);
         });
-        return new ResponseEntity<Object>(errors, HttpStatus.BAD_REQUEST);
+        response.put("rc", 400);
+        response.put("rd", "error");
+        response.put("detail", ex.getFieldErrors().get(0).getField()+ " " +ex.getFieldErrors().get(0).getDefaultMessage());
+        return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
     }
 }

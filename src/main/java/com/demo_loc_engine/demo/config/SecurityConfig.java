@@ -69,13 +69,13 @@ public class SecurityConfig {
         return http.build();
     }
 
-    private static AuthorizationManager<RequestAuthorizationContext> hasIpAddress(String ipAddress) {
-        IpAddressMatcher ipAddressMatcher = new IpAddressMatcher(ipAddress);
-        return (authentication, context) -> {
-            HttpServletRequest request = context.getRequest();
-            return new AuthorizationDecision(ipAddressMatcher.matches(request));
-        };
-    }
+    // private static AuthorizationManager<RequestAuthorizationContext> hasIpAddress(String ipAddress) {
+    //     IpAddressMatcher ipAddressMatcher = new IpAddressMatcher(ipAddress);
+    //     return (authentication, context) -> {
+    //         HttpServletRequest request = context.getRequest();
+    //         return new AuthorizationDecision(ipAddressMatcher.matches(request));
+    //     };
+    // }
 
     @Bean
     public AuthenticationManager authenticationManager(
@@ -97,14 +97,14 @@ public class SecurityConfig {
         return passwordEncoder;
     }
 
-    @Bean
-    CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:8089"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST"));
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
-    }
+    // @Bean
+    // CorsConfigurationSource corsConfigurationSource() {
+    //     CorsConfiguration configuration = new CorsConfiguration();
+    //     configuration.setAllowedOrigins(Arrays.asList("http://localhost:8089"));
+    //     configuration.setAllowedMethods(Arrays.asList("GET", "POST"));
+    //     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    //     source.registerCorsConfiguration("/**", configuration);
+    //     return source;
+    // }
 
 }

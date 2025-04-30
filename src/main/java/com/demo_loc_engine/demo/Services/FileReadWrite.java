@@ -549,13 +549,63 @@ public class FileReadWrite {
     }
 
     public String locTRF(List<LogAscend> list, ChannelResponseRepository crr, ChannelRepository cr, String mId,
-            TerminalMerchantRepository tmr, MftsResponseRepository mftsResponseRepository) {
+            TerminalMerchantRepository tmr, MftsResponseRepository mftsResponseRepository,Integer seq_start,Integer seq_end) {
         LocalDate date = LocalDate.now();
         // if (date.toString().equals(oldDate) == false) {
         // iterlocTRF = 0;
         // }
         // iterlocTRF++;
-        Integer seq = this.findSequence(mftsResponseRepository);
+        Integer seq = this.findSequenceNew(mftsResponseRepository,seq_start,seq_end);
+        String seq_str = seq.toString();
+        String nama_folder = date.toString();
+        String nama_path = "opt/LOCTRF/" + nama_folder;
+        String[] arr_date = nama_folder.split("-");
+
+        String nama_file = "LOC" + arr_date[0]
+                + arr_date[1] + arr_date[2] + "0".repeat(4 - seq_str.length()) + seq_str + ".csv";
+        // System.out.println("nama_file = " + nama_file);
+
+        // Optional<ChannelResponse> cr_list = crr.getByReferenceId("amitest8999");
+        // System.out.println(cr_list.get().getCardNo());
+
+        try {
+            Files.createDirectories(Paths.get(nama_path));
+            Boolean wrBool = writeFilelocTRF(list, nama_path, nama_file, arr_date, crr, mId, cr, tmr);
+            if (wrBool == false) {
+                return "FAIL";
+            }
+            // date = date.plusDays(1);
+            // oldDate = date.toString();
+            MftsResponse mftsResponse = new MftsResponse();
+            Optional<MftsResponse> optData = mftsResponseRepository
+                    .findByNamaFile((nama_file.substring(0, nama_file.length() - 4)));
+            if (optData.isPresent() && optData.get().getIs_send() == null) {
+                mftsResponse = optData.get();
+            }
+            mftsResponse.setNama_file(nama_file.substring(0, nama_file.length() - 4));
+            mftsResponse.setDate_create(LocalDateTime.now());
+            mftsResponseRepository.save(mftsResponse);
+            for (LogAscend logAscend : list) {
+                logAscend.setNamaFile(nama_file.substring(0, nama_file.length() - 4));
+                this.logAscendRepository.save(logAscend);
+            }
+            return "Berhasil membuat file " + nama_file + " cek pada path:'" + nama_path + "'";
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            return "FAIL";
+        }
+
+    }
+
+    public String locTRFSKN(List<LogAscend> list, ChannelResponseRepository crr, ChannelRepository cr, String mId,
+            TerminalMerchantRepository tmr, MftsResponseRepository mftsResponseRepository,Integer seq_start,Integer seq_end) {
+        LocalDate date = LocalDate.now();
+        // if (date.toString().equals(oldDate) == false) {
+        // iterlocTRF = 0;
+        // }
+        // iterlocTRF++;
+        Integer seq = this.findSequenceNew(mftsResponseRepository,seq_start,seq_end);
         String seq_str = seq.toString();
         String nama_folder = date.toString();
         String nama_path = "opt/LOCTRF/" + nama_folder;
@@ -764,10 +814,23 @@ public class FileReadWrite {
     // return main;
     // }
 
-    public Integer findSequence(MftsResponseRepository mftsResponseRepository) {
+    public Integer findSequence(MftsResponseRepository mftsResponseRepository,Integer seq_start,Integer seq_end) {
         LocalDateTime ldt = LocalDateTime.of(LocalDate.now(), LocalTime.of(0, 0, 0));
-        List<MftsResponse> listMfts = mftsResponseRepository.findSequenceData(ldt, ldt.plusDays(1));
-        Integer sequence = listMfts.size() + 501;
+        List<MftsResponse> listMfts = mftsResponseRepository.findSequenceDataOVB(ldt, ldt.plusDays(1));
+        Integer sequence = listMfts.size();
+        return sequence;
+    }
+    public Integer findSequenceSkn(MftsResponseRepository mftsResponseRepository,Integer seq_start,Integer seq_end) {
+        LocalDateTime ldt = LocalDateTime.of(LocalDate.now(), LocalTime.of(0, 0, 0));
+        List<MftsResponse> listMfts = mftsResponseRepository.findSequenceDataSKN(ldt, ldt.plusDays(1));
+        Integer sequence = listMfts.size() + 1000;
+        return sequence;
+    }
+
+    public Integer findSequenceNew(MftsResponseRepository mftsResponseRepository,Integer seq_start,Integer seq_end) {
+        LocalDateTime ldt = LocalDateTime.of(LocalDate.now(), LocalTime.of(0, 0, 0));
+        List<MftsResponse> listMfts = mftsResponseRepository.findSequenceDataNew(ldt, ldt.plusDays(1),seq_end,seq_start);
+        Integer sequence = listMfts.size() + seq_start;
         return sequence;
     }
 

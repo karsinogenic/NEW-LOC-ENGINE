@@ -1,0 +1,11 @@
+Flag:,N,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Account Debit:,1021000300006,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Total transaction:,2,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Total transaction amount:,900000000,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Transaction date:,161224,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+User ID:,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Code:,28dc,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Service code,Source Branch,Date DDMMYY,Reff no,Amount,Remark Line 3,Remark Line 4,REMARK TRX,BIC BANK PENERIMA,NAMA PENGIRIM,REKENING PENGIRIM,CHARGE 1,CHARGE 2,Jenis nasabah penerima,Status penduduk penerima,Account Credit,Account Debit,NAMA PENERIMA OVB,REKENING PENERIMA SKN,NAMA PENERIMA SKN,REKENING PENERIMA  RTG,NAMA PENERIMA  RTG,AlAMAT PENERIMA,AlAMAT KOTA PENERIMA,KODE CABANG BANK PENERIMA,NAMA PENERIMA EWALLET,Reff User,Company Identifier,Additional1,Additional2,Additional3,Currency Debit,Currency Credit,Rate Debit,Rate Credit,Amount Credit
+SKN,801,161224,,500000000,LOAN ON CARD LOC,SMTLOC20241205113042Jbf7a,LOAN ON CARD,MEGAIDJX,GL RPT,1021000300006,,,1,1,,,,11500021009160,,,,,,,,SMTLOC20241205113042Jbf7a,,,,,,,,,
+SKN,801,161224,,400000000,LOAN ON CARD LOC,SMTLOC20241205113341oNDVF,LOAN ON CARD,MEGAIDJC,GL RPT,1021000300006,,,1,1,,,,10340021014158,,,,,,,,SMTLOC20241205113341oNDVF,,,,,,,,,
