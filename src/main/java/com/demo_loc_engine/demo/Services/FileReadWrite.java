@@ -196,7 +196,7 @@ public class FileReadWrite {
             String record_type = "D";
             String prog_code = " ".repeat(8);
             String cc_num = " ".repeat(19);
-            Integer year = LocalDate.now().getYear();
+            Integer year = logAscend.getCreated_at().getYear();
             String datePost = year.toString() + logAscend.getDate() + logAscend.getTime() + "00";
             String refNumber = logAscend.getReffno().length() < 23
                     ? logAscend.getReffno() + " ".repeat(23 - logAscend.getReffno().length())
